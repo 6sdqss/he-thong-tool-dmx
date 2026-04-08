@@ -13,7 +13,7 @@ from urllib.parse import urljoin, urlparse
 from requests.utils import cookiejar_from_dict
 
 # ==========================================
-# CẤU HÌNH HEADER & COOKIE JSON CHUẨN CỦA ĐỨC
+# CẤU HÌNH HEADER & THÔNG SỐ CHUNG
 # ==========================================
 st.set_page_config(page_title="Hệ Thống Tool ĐỨC", page_icon="🚀", layout="wide")
 USERS = {"ducadmin": "matkhau123", "nhanvien1": "123456"}
@@ -23,29 +23,48 @@ HEADERS = {
     "User-Agent": USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 }
-COOKIES_FILE = "cookies.json"
 KEYWORD_FILE = "keywords.json"
 WEB_OPTIONS = ["Thế Giới Di Động", "Điện Máy Xanh", "TopZone"]
 
+# ==========================================
+# KHU VỰC 1: HỆ THỐNG ĐỌC COOKIE TỰ ĐỘNG
+# ==========================================
 def get_session():
-    """Hàm nạp Cookie từ file JSON để vượt tường lửa"""
+    """Hàm nạp Cookie từ 2 file JSON riêng biệt để vượt tường lửa"""
     session = requests.Session()
     session.headers.update(HEADERS)
-    if os.path.exists(COOKIES_FILE):
+    
+    all_cookies = {}
+    
+    # 1. Đọc Cookie của DMX
+    if os.path.exists("cookies_dmx.json"):
         try:
-            with open(COOKIES_FILE, "r", encoding="utf-8") as f:
-                cookie_data = json.load(f)
-                cookies = {c.get("name"): c.get("value") for c in cookie_data if c.get("name") and c.get("value")}
-                session.cookies = cookiejar_from_dict(cookies)
+            with open("cookies_dmx.json", "r", encoding="utf-8") as f:
+                for c in json.load(f):
+                    if c.get("name") and c.get("value"): 
+                        all_cookies[c.get("name")] = c.get("value")
         except Exception as e:
-            st.error(f"Lỗi đọc cookies.json: {e}")
+            st.error(f"Lỗi đọc cookies_dmx.json: {e}")
+            
+    # 2. Đọc Cookie của TGDD
+    if os.path.exists("cookies_tgdd.json"):
+        try:
+            with open("cookies_tgdd.json", "r", encoding="utf-8") as f:
+                for c in json.load(f):
+                    if c.get("name") and c.get("value"): 
+                        all_cookies[c.get("name")] = c.get("value")
+        except Exception as e:
+            st.error(f"Lỗi đọc cookies_tgdd.json: {e}")
+            
+    # Nạp toàn bộ cookie vào hệ thống
+    session.cookies = cookiejar_from_dict(all_cookies)
     return session
 
 # ==========================================
 # KHU VỰC 2: CÁC HÀM XỬ LÝ (BÊ NGUYÊN SI TỪ CODE GỐC)
 # ==========================================
 
-# --- TỪ FILE: Chèn Link.py ---
+# --- TOOL 1: Hàm Chèn Link ---
 def load_keywords():
     if os.path.exists(KEYWORD_FILE):
         try:
@@ -59,7 +78,7 @@ def save_keywords(data):
     with open(KEYWORD_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# --- TỪ FILE: hoanthienlayidsp.py ---
+# --- TOOL 2: Lấy ID SP ---
 def scrape_tgdd_product(url):
     try:
         html = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=10).text
@@ -74,7 +93,7 @@ def scrape_tgdd_product(url):
         return product_name, product_id
     except Exception as e: return "Lỗi", str(e)
 
-# --- TỪ FILE: lay trang thai kinh doanh.py ---
+# --- TOOL 3: Check Trạng Thái ---
 def fetch_product_info(session, product_id):
     url = f"https://www.dienmayxanh.com/sp-{product_id}"
     try:
@@ -94,7 +113,7 @@ def fetch_product_info(session, product_id):
         return product_id, product_name, "Không xác định / Ngừng KD"
     except Exception as e: return product_id, "Lỗi kết nối", str(e)
 
-# --- TỪ FILE: laythumbdmx.py & Lấy Thumb TGDD.py ---
+# --- TOOL 4 & 5: Lấy Thumb API ---
 def extract_simage_thumb(simage_str):
     if not simage_str: return None
     try:
@@ -159,7 +178,7 @@ def fetch_by_api(session, product_id, domain):
         return None, pic or "", "API_no_seo"
     except Exception as e: return None, None, f"API_error: {e}"
 
-# --- TỪ FILE: python mainn.py (Tải Hình GLR) ---
+# --- TOOL 8: Tải Hình Gallery ---
 def clean_name(name: str) -> str:
     cleaned = re.sub(r'[\\/:*?"<>|]', "", name)
     return re.sub(r"\s+", " ", cleaned).strip()
@@ -225,13 +244,13 @@ if st.sidebar.button("🚪 Đăng xuất"):
     st.rerun()
 
 # ==========================================
-# KHU VỰC 4: GIAO DIỆN CÁC TOOL
+# KHU VỰC 4: GIAO DIỆN CHÍNH CÁC TOOL
 # ==========================================
 
 # --- TOOL 0 ---
 if "0. Trang chủ" in menu:
     st.title("🌟 BẢNG ĐIỀU KHIỂN")
-    st.success("Đã kết nối đầy đủ hệ thống JSON Cookies và Keywords. Các logic API/Regex giữ nguyên bản 100%.")
+    st.success("Hệ thống Web đã kích hoạt Thành Công. Hỗ trợ tự động phân loại Cookie DMX/TGDD, API quét ảnh chuyên sâu và lưu file JSON tự động.")
 
 # --- TOOL 1: CHÈN LINK (CÓ JSON) ---
 elif "1. Công Cụ Chèn Link" in menu:
@@ -244,10 +263,11 @@ elif "1. Công Cụ Chèn Link" in menu:
         with c2: new_kw = st.text_input("Từ khóa mới")
         with c3: new_link = st.text_input("Link chèn mới")
         if st.button("➕ Thêm vào Database"):
-            kw_data[site_sel][new_kw] = new_link
-            save_keywords(kw_data)
-            st.success("Đã lưu vào keywords.json!")
-            st.rerun()
+            if new_kw and new_link:
+                kw_data[site_sel][new_kw] = new_link
+                save_keywords(kw_data)
+                st.success("Đã lưu vào keywords.json!")
+                st.rerun()
         st.json(kw_data[site_sel])
     with tab1:
         site_use = st.selectbox("Dùng data của:", WEB_OPTIONS)
@@ -258,6 +278,8 @@ elif "1. Công Cụ Chèn Link" in menu:
                 pattern = re.compile(rf'(?i)\b({re.escape(kw)})\b')
                 result_text = pattern.sub(f'<a href="{link}" target="_blank">\\1</a>', result_text)
             st.code(result_text, language="html")
+            st.markdown("### Xem trước giao diện bài viết:")
+            st.markdown(result_text, unsafe_allow_html=True)
 
 # --- TOOL 2: LẤY ID SP ---
 elif "2. Lấy ID" in menu:
@@ -279,7 +301,7 @@ elif "3. Check Trạng Thái" in menu:
     if st.button("🚀 Kiểm tra"):
         ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
         results, bar = [], st.progress(0)
-        session = get_session() # Lấy Session có Cookie chuẩn
+        session = get_session() # Lấy Session có Cookie tổng hợp
         for i, pid in enumerate(ids):
             pid_num = re.search(r'(\d+)', pid).group(1) if re.search(r'(\d+)', pid) else pid
             _id, name, status = fetch_product_info(session, pid_num)
@@ -298,7 +320,7 @@ elif "Lấy Thumb" in menu:
     if st.button("🚀 Quét Ảnh", type="primary"):
         ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
         results, bar = [], st.progress(0)
-        session = get_session() # Lấy Session có Cookie chuẩn
+        session = get_session() # Lấy Session có Cookie tổng hợp
         for i, pid in enumerate(ids):
             mnum = re.search(r'(\d+)(?!.*\d)', pid)
             pid_num = mnum.group(1) if mnum else pid
@@ -351,7 +373,7 @@ elif "7. Resize Ảnh" in menu:
     uploaded_files = st.file_uploader("Kéo thả ảnh", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'webp'])
     if uploaded_files and st.button("🚀 Bắt đầu Resize"):
         w, h = map(int, size_option.split("x"))
-        zip_buffer = io.BytesIO() # Dùng ZIP vì Web không ghi vào ổ D: được
+        zip_buffer = io.BytesIO() # Dùng ZIP vì Web không ghi vào ổ cứng được
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             bar = st.progress(0)
             for i, file in enumerate(uploaded_files):
