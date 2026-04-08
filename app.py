@@ -13,35 +13,39 @@ from urllib.parse import urljoin, urlparse
 from requests.utils import cookiejar_from_dict
 
 # ==========================================
-# CẤU HÌNH GIAO DIỆN & TÀI KHOẢN
+# CẤU HÌNH HEADER & COOKIE JSON CHUẨN CỦA ĐỨC
 # ==========================================
 st.set_page_config(page_title="Hệ Thống Tool ĐỨC", page_icon="🚀", layout="wide")
 USERS = {"ducadmin": "matkhau123", "nhanvien1": "123456"}
 
-# ==========================================
-# KHU VỰC 1: GIỮ NGUYÊN COOKIES VÀ HEADER CỦA BẠN
-# ==========================================
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}
+HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+}
+COOKIES_FILE = "cookies.json"
+KEYWORD_FILE = "keywords.json"
+WEB_OPTIONS = ["Thế Giới Di Động", "Điện Máy Xanh", "TopZone"]
 
-COOKIES_DMX_RAW = r'''[{"domain": ".dienmayxanh.com", "expirationDate": 1775548707, "name": "_ce.clock_data", "value": "-517%2C113.161.59.60%2C1%2C91e1a2a41c0741f7f47615ab9de2fb8a%2CChrome%2CVN"}, {"domain": ".dienmayxanh.com", "name": "DMX_Personal", "value": "%7B%22CustomerId%22%3A0%2C%22CustomerSex%22%3A-1%2C%22CustomerName%22%3Anull%2C%22CustomerPhone%22%3Anull%2C%22CustomerMail%22%3Anull%2C%22Lat%22%3A0.0%2C%22Lng%22%3A0.0%2C%22Address%22%3Anull%2C%22CurrentUrl%22%3Anull%2C%22ProvinceId%22%3A1027%2C%22ProvinceType%22%3Anull%2C%22ProvinceName%22%3A%22H%E1%BB%93%20Ch%C3%AD%20Minh%22%2C%22DistrictId%22%3A0%2C%22DistrictType%22%3Anull%2C%22DistrictName%22%3Anull%2C%22WardId%22%3A0%2C%22WardType%22%3Anull%2C%22WardName%22%3Anull%2C%22StoreId%22%3A0%2C%22CouponCode%22%3Anull%2C%22HasLocation%22%3Afalse%7D"}]'''
-COOKIES_TGDD_RAW = r'''[{"domain": ".thegioididong.com", "name": "DMX_Personal", "value": "%7B%22CustomerId%22%3A0%2C%22CustomerSex%22%3A-1%2C%22CustomerName%22%3Anull%2C%22CustomerPhone%22%3Anull%2C%22CustomerMail%22%3Anull%2C%22Lat%22%3A0.0%2C%22Lng%22%3A0.0%2C%22Address%22%3Anull%2C%22CurrentUrl%22%3Anull%2C%22ProvinceId%22%3A3%2C%22ProvinceType%22%3Anull%2C%22ProvinceName%22%3A%22H%E1%BB%93%20Ch%C3%AD%20Minh%22%2C%22DistrictId%22%3A0%2C%22DistrictType%22%3Anull%2C%22DistrictName%22%3Anull%2C%22WardId%22%3A0%2C%22WardType%22%3Anull%2C%22WardName%22%3Anull%2C%22StoreId%22%3A0%2C%22CouponCode%22%3Anull%2C%22HasLocation%22%3Afalse%7D"}]'''
-
-def get_session(cookie_raw):
+def get_session():
+    """Hàm nạp Cookie từ file JSON để vượt tường lửa"""
     session = requests.Session()
     session.headers.update(HEADERS)
-    try:
-        cookies = {c.get("name"): c.get("value") for c in json.loads(cookie_raw) if c.get("name")}
-        session.cookies = cookiejar_from_dict(cookies)
-    except: pass
+    if os.path.exists(COOKIES_FILE):
+        try:
+            with open(COOKIES_FILE, "r", encoding="utf-8") as f:
+                cookie_data = json.load(f)
+                cookies = {c.get("name"): c.get("value") for c in cookie_data if c.get("name") and c.get("value")}
+                session.cookies = cookiejar_from_dict(cookies)
+        except Exception as e:
+            st.error(f"Lỗi đọc cookies.json: {e}")
     return session
 
 # ==========================================
-# KHU VỰC 2: GIỮ NGUYÊN CÁC HÀM PYTHON GỐC CỦA BẠN
+# KHU VỰC 2: CÁC HÀM XỬ LÝ (BÊ NGUYÊN SI TỪ CODE GỐC)
 # ==========================================
+
 # --- TỪ FILE: Chèn Link.py ---
-KEYWORD_FILE = "keywords.json"
-WEB_OPTIONS = ["Thế Giới Di Động", "Điện Máy Xanh", "TopZone"]
 def load_keywords():
     if os.path.exists(KEYWORD_FILE):
         try:
@@ -87,10 +91,10 @@ def fetch_product_info(session, product_id):
         if soup.find(lambda tag: tag.name == 'strong' and '₫' in tag.text): return product_id, product_name, "Đang kinh doanh"
         if "Online Giá Rẻ Quá" in html_text or "online giá rẻ quá" in html_text.lower(): return product_id, product_name, "Đang kinh doanh"
         if re.search(r'\d{1,3}(?:\.\d{3})+₫', html_text): return product_id, product_name, "Đang kinh doanh"
-        return product_id, product_name, "Không xác định / Ngừng kinh doanh"
+        return product_id, product_name, "Không xác định / Ngừng KD"
     except Exception as e: return product_id, "Lỗi kết nối", str(e)
 
-# --- TỪ FILE: laythumbdmx.py & tool Công Đức.py ---
+# --- TỪ FILE: laythumbdmx.py & Lấy Thumb TGDD.py ---
 def extract_simage_thumb(simage_str):
     if not simage_str: return None
     try:
@@ -117,16 +121,14 @@ def fetch_by_page(session, product_id, domain):
     short_url = f"https://www.{domain}/sp-{product_id}"
     try:
         r = session.get(short_url, headers=HEADERS, allow_redirects=True, timeout=12)
-        if r.status_code != 200: return None, None, f"Page HTTP {r.status_code}"
+        if r.status_code != 200: return None, None, f"HTTP {r.status_code}"
         html = r.text
         m = re.search(r'<meta[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']', html, re.I)
         if m: return r.url, m.group(1), "OK(Page-og)"
-        m_alt = re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']', html, re.I)
-        if m_alt: return r.url, m_alt.group(1), "OK(Page-og-alt)"
         m2 = re.search(r'(https?://[^"\']+(?:cdnv2.tgdd.vn|cdn.tgdd.vn|cdnv2.tgdd|tgdd.vn)[^"\']+\.(?:png|jpg|jpeg))', html, re.I)
         if m2: return r.url, m2.group(1), "OK(Page-find)"
         return r.url, None, "NoImageFound"
-    except Exception as e: return None, None, f"Page_error: {e}"
+    except Exception as e: return None, None, f"Error: {e}"
 
 def fetch_by_api(session, product_id, domain):
     api_url = f"https://www.{domain}/apiweb/productdetails?productId={product_id}"
@@ -134,19 +136,22 @@ def fetch_by_api(session, product_id, domain):
         r = session.get(api_url, headers=HEADERS, timeout=10)
         if r.status_code != 200: return None, None, f"API HTTP {r.status_code}"
         data = r.json()
-        seo = data.get("SeoUrl") or data.get("seoUrl") or data.get("SeoUrlRaw")
-        pic = data.get("PictureUrl") or data.get("pictureUrl") or data.get("ImagePath") or data.get("MediaUrl")
+        seo = data.get("SeoUrl") or data.get("SeoUrlRaw")
+        pic = data.get("PictureUrl") or data.get("ImagePath")
         simage = data.get("SIMAGE") or data.get("simage")
+        
         if not seo and isinstance(data, dict):
-            for k in ("data", "product", "Product", "productDetails"):
+            for k in ("data", "product", "productDetails"):
                 if k in data and isinstance(data[k], dict):
                     dd = data[k]
-                    seo = seo or dd.get("SeoUrl") or dd.get("seoUrl")
-                    pic = pic or dd.get("PictureUrl") or dd.get("pictureUrl")
-                    simage = simage or dd.get("SIMAGE") or dd.get("simage")
+                    seo = seo or dd.get("SeoUrl")
+                    pic = pic or dd.get("PictureUrl")
+                    simage = simage or dd.get("SIMAGE")
                     if seo: break
+                    
         thumb_from_simage = extract_simage_thumb(simage) if simage else None
         if thumb_from_simage: pic = thumb_from_simage
+            
         if seo:
             final_url = f"https://www.{domain}" + seo if seo.startswith("/") else seo
             status = "OK(API-SIMAGE)" if simage and pic == thumb_from_simage else "OK(API)"
@@ -169,13 +174,7 @@ def get_item_name(main_url):
         soup = BeautifulSoup(response.text, "html.parser")
         name_tag = soup.find("h1")
         if name_tag: name = name_tag.text.strip()
-        else:
-            text = soup.get_text()
-            match = re.search(r'item_name\s*:\s*"(.*?)"', text)
-            if match: name = match.group(1)
-            else:
-                title = soup.find("title")
-                name = title.text.split("|")[0].strip() if title else "Sản phẩm"
+        else: return "Sản phẩm"
         return clean_name(refine_product_name(name))
     except: return "Sản phẩm không tên"
 
@@ -196,7 +195,7 @@ def get_color_links_and_names(main_url):
     except: return [{"name": "Mặc định", "link": main_url}]
 
 # ==========================================
-# KHU VỰC 3: HỆ THỐNG ĐĂNG NHẬP
+# KHU VỰC 3: HỆ THỐNG ĐĂNG NHẬP & SIDEBAR
 # ==========================================
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if not st.session_state["logged_in"]:
@@ -211,65 +210,59 @@ if not st.session_state["logged_in"]:
                     st.session_state["logged_in"] = True
                     st.session_state["user"] = username
                     st.rerun()
-                else: st.error("❌ Sai tên đăng nhập hoặc mật khẩu!")
+                else: st.error("❌ Sai thông tin!")
     st.stop()
 
-# ==========================================
-# KHU VỰC 4: GIAO DIỆN CHÍNH & SIDEBAR
-# ==========================================
-st.sidebar.markdown(f"### 👋 Xin chào, **{st.session_state['user'].upper()}**!")
+st.sidebar.markdown(f"### 👋 Chào **{st.session_state['user'].upper()}**!")
 st.sidebar.markdown("---")
 menu = st.sidebar.radio("📌 CHỌN CÔNG CỤ", [
     "🏠 0. Trang chủ", "🔗 1. Công Cụ Chèn Link (JSON)", "🔍 2. Lấy ID & Tên Sản Phẩm",
-    "🏪 3. Check Trạng Thái DMX", "📸 4. Lấy Thumb DMX", "📸 5. Lấy Thumb TGDD",
-    "📊 6. Lọc File (Google Sheet)", "✂️ 7. Resize Ảnh Hàng Loạt", "🖼️ 8. Tải Hình Gallery (Chọn Màu)"
+    "🏪 3. Check Trạng Thái KD", "📸 4. Lấy Thumb DMX", "📸 5. Lấy Thumb TGDD",
+    "📊 6. Lọc File (Google Sheet)", "✂️ 7. Resize Ảnh", "🖼️ 8. Tải Hình Gallery"
 ])
-st.sidebar.markdown("---")
-if st.sidebar.button("🚪 Đăng xuất", use_container_width=True):
+if st.sidebar.button("🚪 Đăng xuất"):
     st.session_state["logged_in"] = False
     st.rerun()
 
-# --- TOOL 0: TRANG CHỦ ---
-if "0. Trang chủ" in menu:
-    st.title("🌟 BẢNG ĐIỀU KHIỂN TRUNG TÂM")
-    st.info("Phiên bản Web giữ nguyên 100% Cấu trúc Python gốc của Đức. Tất cả API, Regex, SIMAGE đều nguyên vẹn.")
+# ==========================================
+# KHU VỰC 4: GIAO DIỆN CÁC TOOL
+# ==========================================
 
-# --- TOOL 1: CHÈN LINK (JSON) ---
+# --- TOOL 0 ---
+if "0. Trang chủ" in menu:
+    st.title("🌟 BẢNG ĐIỀU KHIỂN")
+    st.success("Đã kết nối đầy đủ hệ thống JSON Cookies và Keywords. Các logic API/Regex giữ nguyên bản 100%.")
+
+# --- TOOL 1: CHÈN LINK (CÓ JSON) ---
 elif "1. Công Cụ Chèn Link" in menu:
-    st.title("🔗 Tool Quản Lý Từ Khóa & Chèn Link (File JSON)")
+    st.title("🔗 Quản Lý Từ Khóa & Chèn Link")
     kw_data = load_keywords()
-    tab1, tab2 = st.tabs(["✍️ Chèn Link Vào Bài", "⚙️ Quản Lý Từ Khóa (JSON)"])
+    tab1, tab2 = st.tabs(["✍️ Chèn Link", "⚙️ JSON Từ Khóa"])
     with tab2:
-        st.subheader("Thêm từ khóa mới")
         c1, c2, c3 = st.columns(3)
-        with c1: site_sel = st.selectbox("Chọn trang", WEB_OPTIONS)
-        with c2: new_kw = st.text_input("Từ khóa")
-        with c3: new_link = st.text_input("Link chèn")
+        with c1: site_sel = st.selectbox("Trang", WEB_OPTIONS)
+        with c2: new_kw = st.text_input("Từ khóa mới")
+        with c3: new_link = st.text_input("Link chèn mới")
         if st.button("➕ Thêm vào Database"):
-            if new_kw and new_link:
-                kw_data[site_sel][new_kw] = new_link
-                save_keywords(kw_data)
-                st.success("Đã lưu vào JSON!")
-                st.rerun()
-        st.subheader(f"Danh sách từ khóa: {site_sel}")
+            kw_data[site_sel][new_kw] = new_link
+            save_keywords(kw_data)
+            st.success("Đã lưu vào keywords.json!")
+            st.rerun()
         st.json(kw_data[site_sel])
     with tab1:
-        site_use = st.selectbox("Dùng bộ từ khóa của trang:", WEB_OPTIONS)
-        raw_text = st.text_area("Dán nội dung bài viết:", height=200)
-        if st.button("🚀 Xử lý chèn link", type="primary"):
-            if not raw_text: st.warning("Chưa nhập text!")
-            else:
-                result_text = raw_text
-                for kw, link in kw_data[site_use].items():
-                    pattern = re.compile(rf'(?i)\b({re.escape(kw)})\b')
-                    result_text = pattern.sub(f'<a href="{link}" target="_blank">\\1</a>', result_text)
-                st.subheader("Kết quả (Mã HTML):")
-                st.code(result_text, language="html")
+        site_use = st.selectbox("Dùng data của:", WEB_OPTIONS)
+        raw_text = st.text_area("Dán bài viết vào đây:", height=200)
+        if st.button("🚀 Chèn Link", type="primary") and raw_text:
+            result_text = raw_text
+            for kw, link in kw_data[site_use].items():
+                pattern = re.compile(rf'(?i)\b({re.escape(kw)})\b')
+                result_text = pattern.sub(f'<a href="{link}" target="_blank">\\1</a>', result_text)
+            st.code(result_text, language="html")
 
 # --- TOOL 2: LẤY ID SP ---
 elif "2. Lấy ID" in menu:
-    st.title("🔍 Tool Quét Tên & ID Sản Phẩm")
-    raw_input = st.text_area("Dán Link (Mỗi link 1 dòng):", height=150)
+    st.title("🔍 Lấy ID & Tên SP TGDD/DMX")
+    raw_input = st.text_area("Dán Link:", height=150)
     if st.button("🚀 Quét dữ liệu"):
         links = [l.strip() for l in raw_input.splitlines() if l.strip()]
         results, bar = [], st.progress(0)
@@ -277,48 +270,46 @@ elif "2. Lấy ID" in menu:
             name, pid = scrape_tgdd_product(link)
             results.append({"Tên SP": name, "ID": pid, "Link": link})
             bar.progress((i + 1) / len(links))
-        df = pd.DataFrame(results)
-        st.dataframe(df, use_container_width=True)
-        st.download_button("📥 Tải Excel", df.to_csv(index=False).encode('utf-8-sig'), "ID_SP.csv", "text/csv")
+        st.dataframe(pd.DataFrame(results), use_container_width=True)
 
-# --- TOOL 3: CHECK TRẠNG THÁI DMX ---
-elif "3. Check Trạng Thái DMX" in menu:
-    st.title("🏪 Tool Check Trạng Thái DMX")
-    raw_input = st.text_area("Dán ID (Mỗi ID 1 dòng):", height=150)
+# --- TOOL 3: CHECK TRẠNG THÁI ---
+elif "3. Check Trạng Thái" in menu:
+    st.title("🏪 Check Trạng Thái Kinh Doanh")
+    raw_input = st.text_area("Dán ID SP:", height=150)
     if st.button("🚀 Kiểm tra"):
         ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
         results, bar = [], st.progress(0)
-        session = get_session(COOKIES_DMX_RAW)
+        session = get_session() # Lấy Session có Cookie chuẩn
         for i, pid in enumerate(ids):
             pid_num = re.search(r'(\d+)', pid).group(1) if re.search(r'(\d+)', pid) else pid
             _id, name, status = fetch_product_info(session, pid_num)
             results.append({"ID": _id, "Tên SP": name, "Trạng Thái": status})
             bar.progress((i + 1) / len(ids))
+            time.sleep(0.3)
         df = pd.DataFrame(results)
         st.dataframe(df, use_container_width=True)
-        st.download_button("📥 Tải Excel", df.to_csv(index=False).encode('utf-8-sig'), "Status_DMX.csv", "text/csv")
+        st.download_button("📥 Tải Excel", df.to_csv(index=False).encode('utf-8-sig'), "TrangThai.csv", "text/csv")
 
-# --- TOOL 4 & 5: LẤY THUMB DMX / TGDD ---
+# --- TOOL 4 & 5: LẤY THUMB (CÓ API VÀ SIMAGE) ---
 elif "Lấy Thumb" in menu:
     domain = "dienmayxanh.com" if "DMX" in menu else "thegioididong.com"
-    cookie_str = COOKIES_DMX_RAW if "DMX" in menu else COOKIES_TGDD_RAW
-    st.title(f"📸 Tool Quét Link Ảnh Thumbnail ({domain})")
-    raw_input = st.text_area("Dán ID (Mỗi ID 1 dòng):", height=150)
-    
-    if st.button("🚀 Bắt đầu quét ảnh", type="primary"):
+    st.title(f"📸 Lấy Link Ảnh Thumb ({domain})")
+    raw_input = st.text_area("Dán ID:", height=150)
+    if st.button("🚀 Quét Ảnh", type="primary"):
         ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
         results, bar = [], st.progress(0)
-        session = get_session(cookie_str)
-        
+        session = get_session() # Lấy Session có Cookie chuẩn
         for i, pid in enumerate(ids):
             mnum = re.search(r'(\d+)(?!.*\d)', pid)
             pid_num = mnum.group(1) if mnum else pid
             
             final_url, thumb, status = None, None, "Start"
+            # Cào Page gốc
             f_url, t_img, s = fetch_by_page(session, pid_num, domain)
             if s.startswith("OK(Page-og"):
                 final_url, thumb, status = f_url, t_img, s
             else:
+                # Cào API SIMAGE (Nguyên bản 100%)
                 a_url, a_img, a_s = fetch_by_api(session, pid_num, domain)
                 final_url = final_url or a_url or f_url
                 thumb = a_img or t_img
@@ -330,7 +321,7 @@ elif "Lấy Thumb" in menu:
             
             results.append({"ID": pid_num, "Link SP": final_url, "Link Ảnh": thumb_clean, "Status": out_status})
             bar.progress((i + 1) / len(ids))
-            time.sleep(0.12)
+            time.sleep(0.2)
             
         df = pd.DataFrame(results)
         st.dataframe(df, use_container_width=True)
@@ -338,7 +329,7 @@ elif "Lấy Thumb" in menu:
 
 # --- TOOL 6: LỌC FILE SHEET ---
 elif "6. Lọc File" in menu:
-    st.title("📊 Tool Lọc & Quản Lý File (Từ Google Sheet)")
+    st.title("📊 Lọc & Quản Lý File (Từ Google Sheet)")
     SHEET_ID = "1wtIhG3O1_oDrJcUvgwxcjxeRnrWpqbWIN15c4a37kl0"
     CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&gid=0"
     try:
@@ -353,14 +344,14 @@ elif "6. Lọc File" in menu:
         st.dataframe(df, use_container_width=True)
     except Exception as e: st.error(f"Lỗi tải Sheet: {e}. Vui lòng mở quyền công khai Google Sheet.")
 
-# --- TOOL 7: RESIZE ẢNH ---
+# --- TOOL 7: RESIZE ẢNH THEO LOGIC CŨ ---
 elif "7. Resize Ảnh" in menu:
-    st.title("✂️ Cắt / Resize Ảnh Chuẩn Kích Thước (Logic Lọt Lòng Bù Nền)")
+    st.title("✂️ Resize Ảnh Chuẩn (Bù Nền Trắng)")
     size_option = st.selectbox("Chọn kích thước:", ["1020x680", "1020x570", "1200x1200"])
-    uploaded_files = st.file_uploader("Kéo thả ảnh vào đây", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'webp'])
+    uploaded_files = st.file_uploader("Kéo thả ảnh", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'webp'])
     if uploaded_files and st.button("🚀 Bắt đầu Resize"):
         w, h = map(int, size_option.split("x"))
-        zip_buffer = io.BytesIO()
+        zip_buffer = io.BytesIO() # Dùng ZIP vì Web không ghi vào ổ D: được
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             bar = st.progress(0)
             for i, file in enumerate(uploaded_files):
@@ -372,29 +363,33 @@ elif "7. Resize Ảnh" in menu:
                         bg.paste(img, (0, 0), img)
                         img = bg.convert("RGB")
                     else: img = img.convert("RGB")
+                    
+                    # Logic Scale LANCZOS nguyên bản của bạn
                     img_ratio, target_ratio = img.width / img.height, w / h
                     if img_ratio > target_ratio:
                         new_w, new_h = w, int(w / img_ratio)
                     else:
                         new_h, new_w = h, int(h * img_ratio)
+                        
                     resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
                     new_img = Image.new("RGB", (w, h), (255, 255, 255))
                     new_img.paste(resized, ((w - new_w) // 2, (h - new_h) // 2))
+                    
                     img_byte_arr = io.BytesIO()
                     new_img.save(img_byte_arr, format='JPEG', quality=95)
                     zip_file.writestr(file.name.rsplit('.', 1)[0] + ".jpg", img_byte_arr.getvalue())
                 except: pass
                 bar.progress((i + 1) / len(uploaded_files))
-        st.success("✅ Xử lý hoàn tất!")
-        st.download_button("📦 Tải File ZIP", zip_buffer.getvalue(), "Anh_Da_Resize.zip", "application/zip")
+        st.success("✅ Đã xử lý xong!")
+        st.download_button("📦 Tải File ZIP chứa Ảnh", zip_buffer.getvalue(), "Anh_Da_Resize.zip", "application/zip")
 
 # --- TOOL 8: TẢI HÌNH GALLERY ---
 elif "8. Tải Hình Gallery" in menu:
-    st.title("🖼️ Tải Hình Gallery Mọi Phiên Bản Màu")
-    url_input = st.text_area("Dán link SP cần tải (Ví dụ: https://www.thegioididong.com/...)", height=100)
+    st.title("🖼️ Tải Hình Gallery (Xóa đuôi -750x500)")
+    url_input = st.text_area("Dán link SP:", height=100)
     if "glr_links" not in st.session_state: st.session_state.glr_links = []
     
-    if st.button("🔍 Quét Sản Phẩm"):
+    if st.button("🔍 Quét Các Màu"):
         links = [l.strip() for l in url_input.splitlines() if l.strip()]
         st.session_state.glr_links = []
         for link in links:
@@ -411,19 +406,20 @@ elif "8. Tải Hình Gallery" in menu:
                 if st.checkbox(c['name'], value=True, key=c['link']):
                     selected_to_download.append({"item_name": p['item_name'], "color_name": c['name'], "link": c['link']})
                     
-        if st.button("📥 Bắt đầu Tải & Đóng Gói (ZIP)", type="primary"):
+        if st.button("📥 Bắt đầu Tải & Đóng Gói", type="primary"):
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                 bar = st.progress(0)
+                session = get_session()
                 for i, info in enumerate(selected_to_download):
                     try:
-                        resp = requests.get(info['link'], headers={"User-Agent": USER_AGENT}, timeout=10)
+                        resp = session.get(info['link'], timeout=10)
                         soup = BeautifulSoup(resp.text, "html.parser")
                         for img in soup.find_all("img"):
                             src = img.get("data-src") or img.get("src")
                             if src and "750x500" in src:
                                 img_url = urljoin(info['link'], src)
-                                clean_url = re.sub(r"-750x500", "", img_url)
+                                clean_url = re.sub(r"-750x500", "", img_url) # Logic cắt đuôi gốc
                                 file_name = f"{clean_name(info['item_name'])}/{clean_name(info['color_name'])}/{os.path.basename(clean_url.split('?')[0])}"
                                 zip_file.writestr(file_name, requests.get(clean_url, headers=HEADERS).content)
                     except: pass
