@@ -6,7 +6,10 @@ import re
 import time
 import json
 import os
+import io
+import zipfile
 from requests.utils import cookiejar_from_dict
+from PIL import Image
 
 # ==========================================
 # CẤU HÌNH HEADER & THÔNG SỐ CHUNG
@@ -186,9 +189,9 @@ if "1. Trang chủ" in menu:
         
     st.markdown("""
     ### 💡 Cập nhật mới nhất:
-    - **Giao diện tối giản:** Đẹp hơn, trực quan hơn, chạy cực nhanh.
-    - **Tính năng Copy 1-Click:** Không cần tải Excel nếu không muốn. Cứ bấm nút Copy ở góc phải màn hình kết quả là dán thẳng vào Sheet/Excel chuẩn 100% (chia đúng cột).
-    - **Tự động phân luồng Cookie:** Hệ thống tự động mở khóa bảo mật của TGDD và DMX.
+    - **Tự động ốp Khung/Logo 1:1:** Khung Watermark trong suốt sẽ được tự động điều chỉnh bằng đúng kích thước của ảnh sản phẩm và áp đè lên. Tỷ lệ hoàn hảo 100%.
+    - **Nút Copy Thần Thánh:** Chỉ cần copy ở khung kết quả và dán vào Excel là dữ liệu tự động chia cột.
+    - **Hệ thống ZIP Ảnh:** Không cần chọn thư mục thủ công. Toàn bộ ảnh sẽ được tải về bằng 1 file nén ZIP cực tiện lợi.
     """)
 
 # --- TOOL LẤY THUMB DMX & TGDD ---
@@ -196,14 +199,18 @@ elif "Lấy Thumb" in menu:
     domain = "dienmayxanh.com" if "DMX" in menu else "thegioididong.com"
     logo_color = "#0088FF" if "DMX" in menu else "#FFCA28"
     
-    st.markdown(f"<h2 style='color: {logo_color};'>📸 Tool Quét Link Ảnh Thumbnail ({domain.upper()})</h2>", unsafe_allow_html=True)
-    st.markdown("Nhập danh sách ID sản phẩm (mỗi ID 1 dòng) để lấy Link gốc và Link ảnh chất lượng cao.")
+    st.markdown(f"<h2 style='color: {logo_color};'>📸 Tool Quét & Ốp Khung Thumbnail ({domain.upper()})</h2>", unsafe_allow_html=True)
     
+    # Khu vực tải lên Khung / Logo
+    uploaded_logo = st.file_uploader("📂 BƯỚC 1: Tải lên Khung/Logo PNG (Nền trong suốt)", type=['png'])
+    if uploaded_logo:
+        st.success("✅ Đã nhận File Khung/Logo. Hệ thống sẽ ốp đè 1:1 vào ảnh sản phẩm.")
+
     col1, col2 = st.columns([1, 2.5])
     
     with col1:
-        raw_input = st.text_area("✍️ Dán danh sách ID vào đây:", height=300)
-        btn_run = st.button("🚀 QUÉT DỮ LIỆU", type="primary", use_container_width=True)
+        raw_input = st.text_area("✍️ BƯỚC 2: Dán danh sách ID vào đây:", height=300)
+        btn_run = st.button("🚀 QUÉT VÀ XỬ LÝ ẢNH", type="primary", use_container_width=True)
 
     with col2:
         if btn_run:
@@ -213,51 +220,95 @@ elif "Lấy Thumb" in menu:
                 ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
                 results = []
                 
+                # Khởi tạo Buffer ZIP để chứa các ảnh tải về
+                zip_buffer = io.BytesIO()
+                
+                # Mở sẵn hình Logo/Khung nếu có
+                logo_img = None
+                if uploaded_logo:
+                    logo_img = Image.open(uploaded_logo).convert("RGBA")
+                
                 progress_text = st.empty()
                 progress_bar = st.progress(0)
                 session = get_session()
                 
-                for i, pid in enumerate(ids):
-                    progress_text.markdown(f"⏳ Đang quét: **{pid}** ({i+1}/{len(ids)})")
-                    mnum = re.search(r'(\d+)(?!.*\d)', pid)
-                    pid_num = mnum.group(1) if mnum else pid
-                    
-                    final_url, thumb, status = None, None, "Start"
-                    f_url, t_img, s = fetch_by_page(session, pid_num, domain)
-                    
-                    if s.startswith("OK(Page-og"):
-                        final_url, thumb, status = f_url, t_img, "OK"
-                    else:
-                        a_url, a_img, a_s = fetch_by_api(session, pid_num, domain)
-                        final_url = final_url or a_url or f_url
-                        thumb = a_img or t_img
-                        status = "OK" if thumb else "Lỗi"
+                # Bắt đầu tạo file ZIP và vòng lặp
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                    for i, pid in enumerate(ids):
+                        progress_text.markdown(f"⏳ Đang quét: **{pid}** ({i+1}/{len(ids)})")
+                        mnum = re.search(r'(\d+)(?!.*\d)', pid)
+                        pid_num = mnum.group(1) if mnum else pid
                         
-                    thumb_clean = clean_image_url(thumb) if thumb else ""
-                    if not final_url: final_url = f"https://www.{domain}/sp-{pid_num}"
-                    out_status = "OK" if thumb_clean else "Không có ảnh"
-                    
-                    results.append({
-                        "ID": pid_num, 
-                        "Link SP": final_url, 
-                        "Link Ảnh": thumb_clean, 
-                        "Trạng Thái": out_status
-                    })
-                    
-                    progress_bar.progress((i + 1) / len(ids))
-                    time.sleep(0.1) # Nghỉ để tránh bị block
+                        final_url, thumb, status = None, None, "Start"
+                        f_url, t_img, s = fetch_by_page(session, pid_num, domain)
+                        
+                        if s.startswith("OK(Page-og"):
+                            final_url, thumb, status = f_url, t_img, "OK"
+                        else:
+                            a_url, a_img, a_s = fetch_by_api(session, pid_num, domain)
+                            final_url = final_url or a_url or f_url
+                            thumb = a_img or t_img
+                            status = "OK" if thumb else "Lỗi"
+                            
+                        thumb_clean = clean_image_url(thumb) if thumb else ""
+                        if not final_url: final_url = f"https://www.{domain}/sp-{pid_num}"
+                        
+                        # --- THUẬT TOÁN TẢI & ỐP KHUNG 1:1 ---
+                        dl_status = ""
+                        if thumb_clean:
+                            try:
+                                img_resp = requests.get(thumb_clean, headers=HEADERS, timeout=12)
+                                if img_resp.status_code == 200:
+                                    # Mở ảnh gốc tải về
+                                    base_img = Image.open(io.BytesIO(img_resp.content)).convert("RGBA")
+                                    
+                                    # Nếu có logo, resize bằng đúng kích thước ảnh tải về và ốp đè lên góc 0,0
+                                    if logo_img:
+                                        logo_resized = logo_img.resize(base_img.size, Image.Resampling.LANCZOS)
+                                        base_img.paste(logo_resized, (0, 0), mask=logo_resized)
+                                    
+                                    # Lưu ảnh vào bộ nhớ tạm để cho vào file ZIP
+                                    out_img_bytes = io.BytesIO()
+                                    base_img.convert("RGB").save(out_img_bytes, format="JPEG", quality=95)
+                                    zip_file.writestr(f"{pid_num}.jpg", out_img_bytes.getvalue())
+                                    
+                                    dl_status = " [Đã tải & Xử lý]"
+                                else:
+                                    dl_status = f" [Lỗi mạng HTTP {img_resp.status_code}]"
+                            except Exception as e:
+                                dl_status = f" [Lỗi ảnh: Hệ thống không lấy được ảnh]"
+                        # --------------------------------------
+
+                        out_status = ("OK" if thumb_clean else "Không có ảnh") + dl_status
+                        
+                        results.append({
+                            "ID": pid_num, 
+                            "Link SP": final_url, 
+                            "Link Ảnh": thumb_clean, 
+                            "Trạng Thái": out_status
+                        })
+                        
+                        progress_bar.progress((i + 1) / len(ids))
+                        time.sleep(0.1) # Nghỉ để tránh bị block
                 
-                progress_text.success("✅ QUÉT HOÀN TẤT!")
+                progress_text.success("✅ QUÉT VÀ XỬ LÝ HOÀN TẤT!")
                 
-                # Tạo giao diện kết quả đẹp
+                # --- GIAO DIỆN HIỂN THỊ KẾT QUẢ ---
                 df = pd.DataFrame(results)
                 
-                # Tab để hiển thị
-                tab_table, tab_copy = st.tabs(["📋 Bảng dữ liệu", "📝 Nút Copy Nhanh (Dán Excel)"])
+                # Hiện Nút Tải ZIP Ảnh ở ngay trên cùng cho tiện
+                st.download_button(
+                    label="📦 TẢI BỘ ẢNH VỀ MÁY (FILE ZIP)", 
+                    data=zip_buffer.getvalue(), 
+                    file_name=f"Anh_San_Pham_{domain}.zip", 
+                    mime="application/zip",
+                    type="primary"
+                )
+                
+                tab_table, tab_copy = st.tabs(["📋 Bảng dữ liệu Link", "📝 Nút Copy Nhanh (Dán Excel)"])
                 
                 with tab_table:
                     st.dataframe(df, use_container_width=True)
-                    st.download_button("📥 Tải File Excel (CSV)", df.to_csv(index=False).encode('utf-8-sig'), f"Thumb_{domain}.csv", "text/csv")
                 
                 with tab_copy:
                     st.info("💡 Hướng dẫn: Rê chuột vào góc trên cùng bên phải của khung đen bên dưới, bấm vào biểu tượng Copy 📋. Sau đó mở Excel/Sheet và bấm Ctrl+V.")
@@ -266,7 +317,6 @@ elif "Lấy Thumb" in menu:
                     for r in results:
                         copy_string += f"{r['ID']}\t{r['Link SP']}\t{r['Link Ảnh']}\t{r['Trạng Thái']}\n"
                     
-                    # Dùng st.code để tạo ra cái khung đen có sẵn nút Copy xịn sò của Streamlit
                     st.code(copy_string, language="text")
 
 # --- TOOL LỌC FILE SHEET ---
