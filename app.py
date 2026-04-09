@@ -165,11 +165,11 @@ if not st.session_state.get("logged_in", False):
 
 # --- SIDEBAR ---
 current_user = st.session_state.get("user", "")
-st.sidebar.markdown(f"### 👋 Xin chào, **{current_user.upper()}**!")
+st.sidebar.markdown(f"### 👋 Ní Hảo, **{current_user.upper()}**!")
 st.sidebar.markdown("---")
 
 if current_user == "ducpro":
-    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD", "📊 4. Lọc File"]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
 else:
     menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
 
@@ -199,8 +199,8 @@ elif st.session_state.current_menu != menu:
 
 if "1. Trang chủ" in menu:
     st.title("🌟 TỔNG QUAN MÔN PHÁI")
-    st.success("✅ How are you")
-    st.info("Chưa tài đâu")
+    st.success("✅ Chẳng có gì để tổng quan")
+    st.info("Lo làm đi")
 
 # ĐÃ SỬA LỖI TẠI ĐÂY: Bắt đúng chữ "Môn Phái"
 elif "Môn Phái" in menu:
