@@ -211,7 +211,7 @@ elif "Môn Phái" in menu:
     
     uploaded_logo = st.file_uploader("📂 BƯỚC 1: Tải lên Khung/Logo PNG (Nền trong suốt, cùng Tỷ lệ 1:1)", type=['png'])
     if uploaded_logo:
-        st.success("✅ Đã nhận File Khung. Hệ thống sẽ ốp đè Khung vừa khít vào ảnh sản phẩm tải về.")
+        st.success("✅ Đã nhận được bí kíp")
 
     col1, col2 = st.columns([1, 2.5])
     
@@ -291,7 +291,7 @@ elif "Môn Phái" in menu:
                         progress_bar.progress((i + 1) / len(ids))
                         time.sleep(0.12)
                 
-                progress_text.success(f"✅ QUÉT HOÀN TẤT! Thành công {success_count}/{len(ids)} ảnh.")
+                progress_text.success(f"✅ Đã luyện xong bí kíp {success_count}/{len(ids)} ảnh.")
                 
                 # LƯU VÀO KÉT SẮT
                 st.session_state.thumb_results = temp_results
@@ -302,7 +302,7 @@ elif "Môn Phái" in menu:
         if st.session_state.get("thumb_results"):
             if st.session_state.success_count > 0:
                 st.download_button(
-                    label=f"📦 TẢI BỘ {st.session_state.success_count} ẢNH VỀ MÁY (FILE ZIP)", 
+                    label=f"📦 TẢI BÍ KÍP {st.session_state.success_count} VỀ MÁY (FILE ZIP NHEN)", 
                     data=st.session_state.thumb_zip, 
                     file_name=f"Anh_San_Pham_{domain}.zip", 
                     mime="application/zip",
@@ -312,7 +312,7 @@ elif "Môn Phái" in menu:
                 st.error("❌ Cảnh báo: Không có ảnh nào tải thành công. Vui lòng kiểm tra lại ID hoặc thêm Cookie vào GitHub!")
 
             df = pd.DataFrame(st.session_state.thumb_results)
-            tab_table, tab_copy = st.tabs(["📋 Bảng dữ liệu Link", "📝 Nút Copy Nhanh (Dán Excel)"])
+            tab_table, tab_copy = st.tabs(["📋 Link", "📝 Copy"])
             
             with tab_table:
                 st.dataframe(df, use_container_width=True)
