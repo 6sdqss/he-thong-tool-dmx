@@ -217,7 +217,7 @@ elif "Môn Phái" in menu:
     
     with col1:
         raw_input = st.text_area("✍️ BƯỚC 2: Dán danh sách ID vào đây:", height=300)
-        btn_run = st.button("🚀 QUÉT VÀ XỬ LÝ ẢNH", type="primary", use_container_width=True)
+        btn_run = st.button("🚀 LUYỆN CÔNG", type="primary", use_container_width=True)
 
     with col2:
         if btn_run:
@@ -302,7 +302,7 @@ elif "Môn Phái" in menu:
         if st.session_state.get("thumb_results"):
             if st.session_state.success_count > 0:
                 st.download_button(
-                    label=f"📦 TẢI BÍ KÍP {st.session_state.success_count} VỀ MÁY (FILE ZIP NHEN)", 
+                    label=f"📦 TẢI ĐƯỢC {st.session_state.success_count} BÍ KÍP VỀ MÁY (FILE ZIP NHEN)", 
                     data=st.session_state.thumb_zip, 
                     file_name=f"Anh_San_Pham_{domain}.zip", 
                     mime="application/zip",
