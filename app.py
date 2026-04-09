@@ -25,41 +25,37 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 }
 
-# Khởi tạo Két sắt bộ nhớ cho việc Tải File (Chống mất dữ liệu khi load trang)
+# Khởi tạo Két sắt bộ nhớ 
 if "thumb_results" not in st.session_state:
     st.session_state.thumb_results = []
 if "thumb_zip" not in st.session_state:
     st.session_state.thumb_zip = None
+if "success_count" not in st.session_state:
+    st.session_state.success_count = 0
 
 # ==========================================
 # KHU VỰC 1: HỆ THỐNG ĐỌC COOKIE TỰ ĐỘNG
 # ==========================================
 def get_session():
-    """Hàm nạp Cookie từ 2 file JSON riêng biệt để vượt tường lửa"""
     session = requests.Session()
     session.headers.update(HEADERS)
     
     all_cookies = {}
-    
-    # Đọc Cookie DMX
     if os.path.exists("cookies_dmx.json"):
         try:
             with open("cookies_dmx.json", "r", encoding="utf-8") as f:
                 for c in json.load(f):
                     if c.get("name") and c.get("value"): 
                         all_cookies[c.get("name")] = c.get("value")
-        except Exception as e:
-            st.error(f"Lỗi đọc cookies_dmx.json: {e}")
+        except Exception as e: pass
             
-    # Đọc Cookie TGDD
     if os.path.exists("cookies_tgdd.json"):
         try:
             with open("cookies_tgdd.json", "r", encoding="utf-8") as f:
                 for c in json.load(f):
                     if c.get("name") and c.get("value"): 
                         all_cookies[c.get("name")] = c.get("value")
-        except Exception as e:
-            st.error(f"Lỗi đọc cookies_tgdd.json: {e}")
+        except Exception as e: pass
             
     session.cookies = cookiejar_from_dict(all_cookies)
     return session
@@ -137,8 +133,6 @@ def fetch_by_api(session, product_id, domain):
 # ==========================================
 # KHU VỰC 3: HỆ THỐNG ĐĂNG NHẬP & PHÂN QUYỀN
 # ==========================================
-if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
-
 if not st.session_state["logged_in"]:
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -171,29 +165,27 @@ menu = st.sidebar.radio("📌 TÍNH NĂNG CHÍNH", menu_options)
 st.sidebar.markdown("---")
 if st.sidebar.button("🚪 Đăng xuất", use_container_width=True):
     st.session_state["logged_in"] = False
-    # Xóa két sắt khi đăng xuất
     st.session_state.thumb_results = []
     st.session_state.thumb_zip = None
+    st.session_state.success_count = 0
     st.rerun()
 
-# Cài đặt tự động xóa Két Sắt nếu chuyển qua lại giữa các Menu (để tránh rác dữ liệu)
 if "current_menu" not in st.session_state:
     st.session_state.current_menu = menu
 elif st.session_state.current_menu != menu:
     st.session_state.thumb_results = []
     st.session_state.thumb_zip = None
+    st.session_state.success_count = 0
     st.session_state.current_menu = menu
 
 # ==========================================
 # KHU VỰC 4: GIAO DIỆN CHÍNH
 # ==========================================
 
-# --- TRANG CHỦ ---
 if "1. Trang chủ" in menu:
     st.title("🌟 TỔNG QUAN HỆ THỐNG")
-    st.info("🔥 **Cập nhật Fix Lỗi ZIP:** Hệ thống đã được thiết lập Két Sắt Session State. Đảm bảo file ZIP tải về 100% không bị hỏng, rỗng hoặc mất kết nối.")
+    st.info("Mẹo: Để trình duyệt hỏi vị trí lưu file ZIP, hãy vào Cài đặt Chrome -> Tệp đã tải xuống -> Bật 'Hỏi vị trí lưu từng tệp trước khi tải xuống'.")
 
-# --- TOOL LẤY THUMB DMX & TGDD ---
 elif "Lấy Thumb" in menu:
     domain = "dienmayxanh.com" if "DMX" in menu else "thegioididong.com"
     logo_color = "#0088FF" if "DMX" in menu else "#FFCA28"
@@ -218,6 +210,7 @@ elif "Lấy Thumb" in menu:
                 ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
                 temp_results = []
                 zip_buffer = io.BytesIO()
+                success_count = 0
                 
                 logo_img = None
                 if uploaded_logo:
@@ -263,6 +256,7 @@ elif "Lấy Thumb" in menu:
                                     zip_file.writestr(f"{pid_num}.jpg", out_img_bytes.getvalue())
                                     
                                     dl_status = " [Đã tải & Xử lý]"
+                                    success_count += 1
                                 else:
                                     dl_status = f" [Lỗi tải HTTP {img_resp.status_code}]"
                             except Exception as e:
@@ -280,37 +274,38 @@ elif "Lấy Thumb" in menu:
                         progress_bar.progress((i + 1) / len(ids))
                         time.sleep(0.12)
                 
-                progress_text.success("✅ QUÉT VÀ XỬ LÝ HOÀN TẤT!")
+                progress_text.success(f"✅ QUÉT HOÀN TẤT! Thành công {success_count}/{len(ids)} ảnh.")
                 
-                # KHÓA KẾT QUẢ VÀO KÉT SẮT
+                # CẬP NHẬT KÉT SẮT
                 st.session_state.thumb_results = temp_results
                 st.session_state.thumb_zip = zip_buffer.getvalue()
+                st.session_state.success_count = success_count
 
-        # HIỂN THỊ KẾT QUẢ TỪ KÉT SẮT (Chống mất data khi bấm tải)
+        # HIỂN THỊ KẾT QUẢ 
         if st.session_state.thumb_results:
+            if st.session_state.success_count > 0:
+                st.download_button(
+                    label=f"📦 TẢI BỘ {st.session_state.success_count} ẢNH VỀ MÁY (FILE ZIP)", 
+                    data=st.session_state.thumb_zip, 
+                    file_name=f"Anh_San_Pham_{domain}.zip", 
+                    mime="application/zip",
+                    type="primary"
+                )
+            else:
+                st.error("❌ Cảnh báo: Không có ảnh nào tải thành công. Vui lòng kiểm tra lại cột Trạng Thái bên dưới xem lỗi do đâu (bị chặn cookie hoặc sai ID)!")
+
             df = pd.DataFrame(st.session_state.thumb_results)
-            
-            st.download_button(
-                label="📦 TẢI BỘ ẢNH VỀ MÁY (FILE ZIP)", 
-                data=st.session_state.thumb_zip, 
-                file_name=f"Anh_San_Pham_{domain}.zip", 
-                mime="application/zip",
-                type="primary"
-            )
-            
             tab_table, tab_copy = st.tabs(["📋 Bảng dữ liệu Link", "📝 Nút Copy Nhanh (Dán Excel)"])
             
             with tab_table:
                 st.dataframe(df, use_container_width=True)
             
             with tab_copy:
-                st.info("💡 Hướng dẫn: Rê chuột vào góc phải khung đen, bấm Copy 📋. Sau đó mở Excel bấm Ctrl+V.")
                 copy_string = "ID\tLink SP\tLink Ảnh\tTrạng Thái\n"
                 for r in st.session_state.thumb_results:
                     copy_string += f"{r['ID']}\t{r['Link SP']}\t{r['Link Ảnh']}\t{r['Trạng Thái']}\n"
                 st.code(copy_string, language="text")
 
-# --- TOOL LỌC FILE SHEET ---
 elif "4. Lọc File" in menu:
     st.title("📊 Quản Lý & Lọc File (Google Sheet)")
     st.markdown("Kết nối trực tiếp với Sheet hệ thống. Dễ dàng tìm kiếm và xem tiến độ.")
