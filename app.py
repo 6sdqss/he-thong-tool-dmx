@@ -25,6 +25,12 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 }
 
+# Khởi tạo Két sắt bộ nhớ cho việc Tải File (Chống mất dữ liệu khi load trang)
+if "thumb_results" not in st.session_state:
+    st.session_state.thumb_results = []
+if "thumb_zip" not in st.session_state:
+    st.session_state.thumb_zip = None
+
 # ==========================================
 # KHU VỰC 1: HỆ THỐNG ĐỌC COOKIE TỰ ĐỘNG
 # ==========================================
@@ -59,7 +65,7 @@ def get_session():
     return session
 
 # ==========================================
-# KHU VỰC 2: CÁC HÀM XỬ LÝ LẤY ẢNH (BẢN FIX LỖI DMX)
+# KHU VỰC 2: CÁC HÀM XỬ LÝ LẤY ẢNH 
 # ==========================================
 def extract_simage_thumb(simage_str):
     if not simage_str: return None
@@ -77,19 +83,13 @@ def extract_simage_thumb(simage_str):
         return None
 
 def clean_image_url(url, domain):
-    """Hàm dọn dẹp Link Ảnh thông minh, fix lỗi khuyết domain của DMX"""
     if not url: return url
-    # Cắt đuôi resize (-750x500...)
     cleaned = re.sub(r'-\d+x\d+(?=\.(?:jpg|jpeg|png|webp))', '', url, flags=re.IGNORECASE)
-    
-    if cleaned.startswith("//"): 
-        return "https:" + cleaned
+    if cleaned.startswith("//"): return "https:" + cleaned
     elif cleaned.startswith("/"): 
         cdn_prefix = "cdn.dienmayxanh.com" if "dienmayxanh" in domain else "cdnv2.tgdd.vn"
         return f"https://{cdn_prefix}" + cleaned
-    elif not cleaned.startswith("http"):
-        return "https://" + cleaned
-        
+    elif not cleaned.startswith("http"): return "https://" + cleaned
     return cleaned
 
 def fetch_by_page(session, product_id, domain):
@@ -161,28 +161,28 @@ if not st.session_state["logged_in"]:
 st.sidebar.markdown(f"### 👋 Xin chào, **{st.session_state['user'].upper()}**!")
 st.sidebar.markdown("---")
 
-# Phân quyền hiển thị Menu
 if st.session_state["user"] == "ducadmin":
-    menu_options = [
-        "🏠 1. Trang chủ", 
-        "📸 2. Lấy Thumb DMX", 
-        "📸 3. Lấy Thumb TGDD",
-        "📊 4. Lọc File (Google Sheet)"
-    ]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD", "📊 4. Lọc File (Google Sheet)"]
 else:
-    # Nhân viên không thấy Lọc File
-    menu_options = [
-        "🏠 1. Trang chủ", 
-        "📸 2. Lấy Thumb DMX", 
-        "📸 3. Lấy Thumb TGDD"
-    ]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD"]
 
 menu = st.sidebar.radio("📌 TÍNH NĂNG CHÍNH", menu_options)
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🚪 Đăng xuất", use_container_width=True):
     st.session_state["logged_in"] = False
+    # Xóa két sắt khi đăng xuất
+    st.session_state.thumb_results = []
+    st.session_state.thumb_zip = None
     st.rerun()
+
+# Cài đặt tự động xóa Két Sắt nếu chuyển qua lại giữa các Menu (để tránh rác dữ liệu)
+if "current_menu" not in st.session_state:
+    st.session_state.current_menu = menu
+elif st.session_state.current_menu != menu:
+    st.session_state.thumb_results = []
+    st.session_state.thumb_zip = None
+    st.session_state.current_menu = menu
 
 # ==========================================
 # KHU VỰC 4: GIAO DIỆN CHÍNH
@@ -191,18 +191,7 @@ if st.sidebar.button("🚪 Đăng xuất", use_container_width=True):
 # --- TRANG CHỦ ---
 if "1. Trang chủ" in menu:
     st.title("🌟 TỔNG QUAN HỆ THỐNG")
-    if st.session_state["user"] == "ducadmin":
-        st.info("🔥 **Tài khoản Admin:** Bạn có toàn quyền sử dụng tất cả các công cụ, bao gồm cả Tool Lọc File (Google Sheet).")
-    else:
-        st.info("👥 **Tài khoản Nhân viên:** Bạn được cấp quyền sử dụng các công cụ Lấy ảnh Thumbnail.")
-        
-    st.markdown("""
-    ### 💡 Cập nhật Fix Lỗi DMX:
-    - **Tải ảnh DMX Mượt Mà:** Sử dụng Session Cookie để xuyên qua tường lửa CDN của Điện Máy Xanh, đảm bảo ảnh tải về thành công 100%.
-    - **Tự động ốp Khung/Logo 1:1:** Khung Watermark trong suốt sẽ được tự động điều chỉnh bằng đúng kích thước của ảnh sản phẩm và áp đè lên. Tỷ lệ hoàn hảo.
-    - **Nút Copy Thần Thánh:** Chỉ cần copy ở khung kết quả và dán vào Excel là dữ liệu tự động chia cột.
-    - **Hệ thống ZIP Ảnh:** Tải về toàn bộ ảnh đã đóng khung siêu nhanh chỉ với 1 cú click chuột.
-    """)
+    st.info("🔥 **Cập nhật Fix Lỗi ZIP:** Hệ thống đã được thiết lập Két Sắt Session State. Đảm bảo file ZIP tải về 100% không bị hỏng, rỗng hoặc mất kết nối.")
 
 # --- TOOL LẤY THUMB DMX & TGDD ---
 elif "Lấy Thumb" in menu:
@@ -211,7 +200,6 @@ elif "Lấy Thumb" in menu:
     
     st.markdown(f"<h2 style='color: {logo_color};'>📸 Tool Quét & Ốp Khung Thumbnail ({domain.upper()})</h2>", unsafe_allow_html=True)
     
-    # Khu vực tải lên Khung / Logo
     uploaded_logo = st.file_uploader("📂 BƯỚC 1: Tải lên Khung/Logo PNG (Nền trong suốt, cùng Tỷ lệ 1:1)", type=['png'])
     if uploaded_logo:
         st.success("✅ Đã nhận File Khung. Hệ thống sẽ ốp đè Khung vừa khít vào ảnh sản phẩm tải về.")
@@ -228,12 +216,9 @@ elif "Lấy Thumb" in menu:
                 st.warning("⚠️ Vui lòng nhập ít nhất 1 ID!")
             else:
                 ids = [l.strip() for l in raw_input.splitlines() if l.strip()]
-                results = []
-                
-                # Khởi tạo Buffer ZIP để chứa các ảnh tải về
+                temp_results = []
                 zip_buffer = io.BytesIO()
                 
-                # Mở sẵn hình Logo/Khung nếu có
                 logo_img = None
                 if uploaded_logo:
                     logo_img = Image.open(uploaded_logo).convert("RGBA")
@@ -242,7 +227,6 @@ elif "Lấy Thumb" in menu:
                 progress_bar = st.progress(0)
                 session = get_session()
                 
-                # Bắt đầu tạo file ZIP và vòng lặp
                 with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                     for i, pid in enumerate(ids):
                         progress_text.markdown(f"⏳ Đang quét: **{pid}** ({i+1}/{len(ids)})")
@@ -260,26 +244,20 @@ elif "Lấy Thumb" in menu:
                             thumb = a_img or t_img
                             status = "OK" if thumb else "Lỗi API"
                             
-                        # Đã sửa lỗi mất https:// của DMX ở hàm clean_image_url
                         thumb_clean = clean_image_url(thumb, domain) if thumb else ""
                         if not final_url: final_url = f"https://www.{domain}/sp-{pid_num}"
                         
-                        # --- THUẬT TOÁN TẢI & ỐP KHUNG 1:1 ---
                         dl_status = ""
                         if thumb_clean:
                             try:
-                                # DÙNG SESSION ĐỂ VƯỢT TƯỜNG LỬA DMX
                                 img_resp = session.get(thumb_clean, timeout=15)
                                 if img_resp.status_code == 200:
-                                    # Mở ảnh gốc tải về
                                     base_img = Image.open(io.BytesIO(img_resp.content)).convert("RGBA")
                                     
-                                    # Nếu có logo, resize bằng đúng kích thước ảnh tải về và ốp đè lên góc 0,0
                                     if logo_img:
                                         logo_resized = logo_img.resize(base_img.size, Image.Resampling.LANCZOS)
                                         base_img.paste(logo_resized, (0, 0), mask=logo_resized)
                                     
-                                    # Lưu ảnh vào bộ nhớ tạm để cho vào file ZIP
                                     out_img_bytes = io.BytesIO()
                                     base_img.convert("RGB").save(out_img_bytes, format="JPEG", quality=95)
                                     zip_file.writestr(f"{pid_num}.jpg", out_img_bytes.getvalue())
@@ -288,12 +266,11 @@ elif "Lấy Thumb" in menu:
                                 else:
                                     dl_status = f" [Lỗi tải HTTP {img_resp.status_code}]"
                             except Exception as e:
-                                dl_status = f" [Lỗi ảnh: Không thể tải]"
-                        # --------------------------------------
+                                dl_status = f" [Lỗi tải ảnh]"
 
                         out_status = ("OK" if thumb_clean else "Không có ảnh") + dl_status
                         
-                        results.append({
+                        temp_results.append({
                             "ID": pid_num, 
                             "Link SP": final_url, 
                             "Link Ảnh": thumb_clean, 
@@ -301,35 +278,37 @@ elif "Lấy Thumb" in menu:
                         })
                         
                         progress_bar.progress((i + 1) / len(ids))
-                        time.sleep(0.12) # Nghỉ để tránh bị block
+                        time.sleep(0.12)
                 
                 progress_text.success("✅ QUÉT VÀ XỬ LÝ HOÀN TẤT!")
                 
-                # --- GIAO DIỆN HIỂN THỊ KẾT QUẢ ---
-                df = pd.DataFrame(results)
-                
-                # Hiện Nút Tải ZIP Ảnh ở ngay trên cùng cho tiện
-                st.download_button(
-                    label="📦 TẢI BỘ ẢNH VỀ MÁY (FILE ZIP)", 
-                    data=zip_buffer.getvalue(), 
-                    file_name=f"Anh_San_Pham_{domain}.zip", 
-                    mime="application/zip",
-                    type="primary"
-                )
-                
-                tab_table, tab_copy = st.tabs(["📋 Bảng dữ liệu Link", "📝 Nút Copy Nhanh (Dán Excel)"])
-                
-                with tab_table:
-                    st.dataframe(df, use_container_width=True)
-                
-                with tab_copy:
-                    st.info("💡 Hướng dẫn: Rê chuột vào góc trên cùng bên phải của khung đen bên dưới, bấm vào biểu tượng Copy 📋. Sau đó mở Excel/Sheet và bấm Ctrl+V.")
-                    # Tạo chuỗi Tab-Separated Values (TSV) để copy dán chuẩn cột
-                    copy_string = "ID\tLink SP\tLink Ảnh\tTrạng Thái\n"
-                    for r in results:
-                        copy_string += f"{r['ID']}\t{r['Link SP']}\t{r['Link Ảnh']}\t{r['Trạng Thái']}\n"
-                    
-                    st.code(copy_string, language="text")
+                # KHÓA KẾT QUẢ VÀO KÉT SẮT
+                st.session_state.thumb_results = temp_results
+                st.session_state.thumb_zip = zip_buffer.getvalue()
+
+        # HIỂN THỊ KẾT QUẢ TỪ KÉT SẮT (Chống mất data khi bấm tải)
+        if st.session_state.thumb_results:
+            df = pd.DataFrame(st.session_state.thumb_results)
+            
+            st.download_button(
+                label="📦 TẢI BỘ ẢNH VỀ MÁY (FILE ZIP)", 
+                data=st.session_state.thumb_zip, 
+                file_name=f"Anh_San_Pham_{domain}.zip", 
+                mime="application/zip",
+                type="primary"
+            )
+            
+            tab_table, tab_copy = st.tabs(["📋 Bảng dữ liệu Link", "📝 Nút Copy Nhanh (Dán Excel)"])
+            
+            with tab_table:
+                st.dataframe(df, use_container_width=True)
+            
+            with tab_copy:
+                st.info("💡 Hướng dẫn: Rê chuột vào góc phải khung đen, bấm Copy 📋. Sau đó mở Excel bấm Ctrl+V.")
+                copy_string = "ID\tLink SP\tLink Ảnh\tTrạng Thái\n"
+                for r in st.session_state.thumb_results:
+                    copy_string += f"{r['ID']}\t{r['Link SP']}\t{r['Link Ảnh']}\t{r['Trạng Thái']}\n"
+                st.code(copy_string, language="text")
 
 # --- TOOL LỌC FILE SHEET ---
 elif "4. Lọc File" in menu:
@@ -344,7 +323,6 @@ elif "4. Lọc File" in menu:
             df = pd.read_csv(CSV_URL)
             df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors="coerce")
             
-            # Lấy cột "Người Làm" (Giả định cột cuối hoặc cột 28)
             creator_col = df.columns[28] if len(df.columns) > 28 else df.columns[-1]
             
             st.markdown("### 🔍 Bộ Lọc")
@@ -355,13 +333,11 @@ elif "4. Lọc File" in menu:
             with c2: 
                 search_kw = st.text_input("🔎 Tìm kiếm Tên Sản Phẩm:")
             
-            # Áp dụng bộ lọc
             if creator_filter != "Tất cả": 
                 df = df[df[creator_col].astype(str) == creator_filter]
             if search_kw: 
                 df = df[df.iloc[:, 3].astype(str).str.lower().str.contains(search_kw.lower())]
             
-            # Thống kê nhanh
             col_met1, col_met2 = st.columns(2)
             col_met1.metric("Tổng số dòng hiển thị", len(df))
             
