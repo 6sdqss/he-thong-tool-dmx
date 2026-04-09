@@ -169,9 +169,9 @@ st.sidebar.markdown(f"### 👋 Xin chào, **{current_user.upper()}**!")
 st.sidebar.markdown("---")
 
 if current_user == "ducadmin":
-    menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD"]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
 else:
-    menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD"]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
 
 menu = st.sidebar.radio("📌 TÍNH NĂNG CHÍNH", menu_options)
 
