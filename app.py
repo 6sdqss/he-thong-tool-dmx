@@ -25,9 +25,7 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 }
 
-# Khởi tạo Két sắt bộ nhớ (Sửa lỗi KeyError logged_in bị thiếu ở bản trước)
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+# Khởi tạo Két sắt bộ nhớ 
 if "thumb_results" not in st.session_state:
     st.session_state.thumb_results = []
 if "thumb_zip" not in st.session_state:
@@ -82,7 +80,17 @@ def extract_simage_thumb(simage_str):
 
 def clean_image_url(url, domain):
     if not url: return url
-    cleaned = re.sub(r'-\d+x\d+(?=\.(?:jpg|jpeg|png|webp))', '', url, flags=re.IGNORECASE)
+    
+    # BỘ LỌC REGEX THÔNG MINH CHỐNG LỖI XÓA -600x600
+    def check_size(match):
+        w, h = int(match.group(1)), int(match.group(2))
+        # Chỉ xóa nếu kích thước nhỏ hơn 600x600 hoặc chuẩn 750x500
+        if (w < 600 and h < 600) or (w == 750 and h == 500):
+            return ""
+        return match.group(0) # Giữ nguyên các số >= 600x600
+        
+    cleaned = re.sub(r'-(\d+)x(\d+)(?=\.(?:jpg|jpeg|png|webp))', check_size, url, flags=re.IGNORECASE)
+    
     if cleaned.startswith("//"): return "https:" + cleaned
     elif cleaned.startswith("/"): 
         cdn_prefix = "cdn.dienmayxanh.com" if "dienmayxanh" in domain else "cdnv2.tgdd.vn"
