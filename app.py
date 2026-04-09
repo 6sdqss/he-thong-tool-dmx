@@ -168,8 +168,8 @@ current_user = st.session_state.get("user", "")
 st.sidebar.markdown(f"### 👋 Xin chào, **{current_user.upper()}**!")
 st.sidebar.markdown("---")
 
-if current_user == "ducadmin":
-    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
+if current_user == "ducpro":
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD", "📊 4. Lọc File"]
 else:
     menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
 
@@ -202,7 +202,8 @@ if "1. Trang chủ" in menu:
     st.success("✅ How are you")
     st.info("Chưa tài đâu")
 
-elif "Lấy Thumb" in menu:
+# ĐÃ SỬA LỖI TẠI ĐÂY: Bắt đúng chữ "Môn Phái"
+elif "Môn Phái" in menu:
     domain = "dienmayxanh.com" if "DMX" in menu else "thegioididong.com"
     logo_color = "#0088FF" if "DMX" in menu else "#FFCA28"
     
@@ -322,6 +323,7 @@ elif "Lấy Thumb" in menu:
                     copy_string += f"{r['ID']}\t{r['Link SP']}\t{r['Link Ảnh']}\t{r['Trạng Thái']}\n"
                 st.code(copy_string, language="text")
 
+# ĐÃ SỬA LỖI TẠI ĐÂY: Khớp tên cho mục Lọc File
 elif "4. Lọc File" in menu:
     st.title("📊 Quản Lý & Lọc File (Google Sheet)")
     st.markdown("Kết nối trực tiếp với Sheet hệ thống. Dễ dàng tìm kiếm và xem tiến độ.")
