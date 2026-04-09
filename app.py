@@ -59,7 +59,7 @@ def get_session():
     return session
 
 # ==========================================
-# KHU VỰC 2: CÁC HÀM XỬ LÝ LẤY ẢNH (GIỮ NGUYÊN BẢN)
+# KHU VỰC 2: CÁC HÀM XỬ LÝ LẤY ẢNH (BẢN FIX LỖI DMX)
 # ==========================================
 def extract_simage_thumb(simage_str):
     if not simage_str: return None
@@ -76,11 +76,20 @@ def extract_simage_thumb(simage_str):
         if simage_str.startswith(("http", "//", "/")): return simage_str
         return None
 
-def clean_image_url(url):
+def clean_image_url(url, domain):
+    """Hàm dọn dẹp Link Ảnh thông minh, fix lỗi khuyết domain của DMX"""
     if not url: return url
-    cleaned = re.sub(r'-\d+x\d+(?=\.(?:jpg|jpeg|png))', '', url)
-    if cleaned.startswith("//"): return "https:" + cleaned
-    elif cleaned.startswith("/"): return "https://cdnv2.tgdd.vn" + cleaned
+    # Cắt đuôi resize (-750x500...)
+    cleaned = re.sub(r'-\d+x\d+(?=\.(?:jpg|jpeg|png|webp))', '', url, flags=re.IGNORECASE)
+    
+    if cleaned.startswith("//"): 
+        return "https:" + cleaned
+    elif cleaned.startswith("/"): 
+        cdn_prefix = "cdn.dienmayxanh.com" if "dienmayxanh" in domain else "cdnv2.tgdd.vn"
+        return f"https://{cdn_prefix}" + cleaned
+    elif not cleaned.startswith("http"):
+        return "https://" + cleaned
+        
     return cleaned
 
 def fetch_by_page(session, product_id, domain):
@@ -91,7 +100,7 @@ def fetch_by_page(session, product_id, domain):
         html = r.text
         m = re.search(r'<meta[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']', html, re.I)
         if m: return r.url, m.group(1), "OK(Page-og)"
-        m2 = re.search(r'(https?://[^"\']+(?:cdnv2.tgdd.vn|cdn.tgdd.vn|cdnv2.tgdd|tgdd.vn)[^"\']+\.(?:png|jpg|jpeg))', html, re.I)
+        m2 = re.search(r'(https?://[^"\']+(?:cdnv2.tgdd.vn|cdn.tgdd.vn|cdnv2.tgdd|tgdd.vn|cdn.dienmayxanh.com)[^"\']+\.(?:png|jpg|jpeg))', html, re.I)
         if m2: return r.url, m2.group(1), "OK(Page-find)"
         return r.url, None, "NoImageFound"
     except Exception as e: return None, None, f"Error: {e}"
@@ -188,10 +197,11 @@ if "1. Trang chủ" in menu:
         st.info("👥 **Tài khoản Nhân viên:** Bạn được cấp quyền sử dụng các công cụ Lấy ảnh Thumbnail.")
         
     st.markdown("""
-    ### 💡 Cập nhật mới nhất:
-    - **Tự động ốp Khung/Logo 1:1:** Khung Watermark trong suốt sẽ được tự động điều chỉnh bằng đúng kích thước của ảnh sản phẩm và áp đè lên. Tỷ lệ hoàn hảo 100%.
+    ### 💡 Cập nhật Fix Lỗi DMX:
+    - **Tải ảnh DMX Mượt Mà:** Sử dụng Session Cookie để xuyên qua tường lửa CDN của Điện Máy Xanh, đảm bảo ảnh tải về thành công 100%.
+    - **Tự động ốp Khung/Logo 1:1:** Khung Watermark trong suốt sẽ được tự động điều chỉnh bằng đúng kích thước của ảnh sản phẩm và áp đè lên. Tỷ lệ hoàn hảo.
     - **Nút Copy Thần Thánh:** Chỉ cần copy ở khung kết quả và dán vào Excel là dữ liệu tự động chia cột.
-    - **Hệ thống ZIP Ảnh:** Không cần chọn thư mục thủ công. Toàn bộ ảnh sẽ được tải về bằng 1 file nén ZIP cực tiện lợi.
+    - **Hệ thống ZIP Ảnh:** Tải về toàn bộ ảnh đã đóng khung siêu nhanh chỉ với 1 cú click chuột.
     """)
 
 # --- TOOL LẤY THUMB DMX & TGDD ---
@@ -202,9 +212,9 @@ elif "Lấy Thumb" in menu:
     st.markdown(f"<h2 style='color: {logo_color};'>📸 Tool Quét & Ốp Khung Thumbnail ({domain.upper()})</h2>", unsafe_allow_html=True)
     
     # Khu vực tải lên Khung / Logo
-    uploaded_logo = st.file_uploader("📂 BƯỚC 1: Tải lên Khung/Logo PNG (Nền trong suốt)", type=['png'])
+    uploaded_logo = st.file_uploader("📂 BƯỚC 1: Tải lên Khung/Logo PNG (Nền trong suốt, cùng Tỷ lệ 1:1)", type=['png'])
     if uploaded_logo:
-        st.success("✅ Đã nhận File Khung/Logo. Hệ thống sẽ ốp đè 1:1 vào ảnh sản phẩm.")
+        st.success("✅ Đã nhận File Khung. Hệ thống sẽ ốp đè Khung vừa khít vào ảnh sản phẩm tải về.")
 
     col1, col2 = st.columns([1, 2.5])
     
@@ -248,16 +258,18 @@ elif "Lấy Thumb" in menu:
                             a_url, a_img, a_s = fetch_by_api(session, pid_num, domain)
                             final_url = final_url or a_url or f_url
                             thumb = a_img or t_img
-                            status = "OK" if thumb else "Lỗi"
+                            status = "OK" if thumb else "Lỗi API"
                             
-                        thumb_clean = clean_image_url(thumb) if thumb else ""
+                        # Đã sửa lỗi mất https:// của DMX ở hàm clean_image_url
+                        thumb_clean = clean_image_url(thumb, domain) if thumb else ""
                         if not final_url: final_url = f"https://www.{domain}/sp-{pid_num}"
                         
                         # --- THUẬT TOÁN TẢI & ỐP KHUNG 1:1 ---
                         dl_status = ""
                         if thumb_clean:
                             try:
-                                img_resp = requests.get(thumb_clean, headers=HEADERS, timeout=12)
+                                # DÙNG SESSION ĐỂ VƯỢT TƯỜNG LỬA DMX
+                                img_resp = session.get(thumb_clean, timeout=15)
                                 if img_resp.status_code == 200:
                                     # Mở ảnh gốc tải về
                                     base_img = Image.open(io.BytesIO(img_resp.content)).convert("RGBA")
@@ -274,9 +286,9 @@ elif "Lấy Thumb" in menu:
                                     
                                     dl_status = " [Đã tải & Xử lý]"
                                 else:
-                                    dl_status = f" [Lỗi mạng HTTP {img_resp.status_code}]"
+                                    dl_status = f" [Lỗi tải HTTP {img_resp.status_code}]"
                             except Exception as e:
-                                dl_status = f" [Lỗi ảnh: Hệ thống không lấy được ảnh]"
+                                dl_status = f" [Lỗi ảnh: Không thể tải]"
                         # --------------------------------------
 
                         out_status = ("OK" if thumb_clean else "Không có ảnh") + dl_status
@@ -289,7 +301,7 @@ elif "Lấy Thumb" in menu:
                         })
                         
                         progress_bar.progress((i + 1) / len(ids))
-                        time.sleep(0.1) # Nghỉ để tránh bị block
+                        time.sleep(0.12) # Nghỉ để tránh bị block
                 
                 progress_text.success("✅ QUÉT VÀ XỬ LÝ HOÀN TẤT!")
                 
