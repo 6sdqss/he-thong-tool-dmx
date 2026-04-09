@@ -14,10 +14,10 @@ from PIL import Image
 # ==========================================
 # CẤU HÌNH HEADER & THÔNG SỐ CHUNG
 # ==========================================
-st.set_page_config(page_title="Hệ Thống Tool ĐỨC", page_icon="💎", layout="wide")
+st.set_page_config(page_title="ĐỨC CONTENT 234766", page_icon="💎", layout="wide")
 
 # TÀI KHOẢN ĐĂNG NHẬP
-USERS = {"ducadmin": "matkhau123", "nhanvien1": "123456"}
+USERS = {"ducpro": "234766"}
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 HEADERS = {
