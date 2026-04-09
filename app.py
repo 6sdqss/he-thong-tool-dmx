@@ -149,7 +149,7 @@ if not st.session_state.get("logged_in", False):
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h2 style='text-align: center; color: #1A237E;'>HỆ THỐNG QUẢN LÝ NỘI DUNG</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #1A237E;'>BÍ KÍP VÕ CÔNG</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: gray;'>Vui lòng đăng nhập để tiếp tục</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("👤 Quý Danh")
