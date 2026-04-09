@@ -25,7 +25,9 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 }
 
-# Khởi tạo Két sắt bộ nhớ 
+# Khởi tạo Két sắt bộ nhớ (Sửa lỗi KeyError logged_in bị thiếu ở bản trước)
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
 if "thumb_results" not in st.session_state:
     st.session_state.thumb_results = []
 if "thumb_zip" not in st.session_state:
