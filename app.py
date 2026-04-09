@@ -152,15 +152,15 @@ if not st.session_state.get("logged_in", False):
         st.markdown("<h2 style='text-align: center; color: #1A237E;'>HỆ THỐNG QUẢN LÝ NỘI DUNG</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: gray;'>Vui lòng đăng nhập để tiếp tục</p>", unsafe_allow_html=True)
         with st.form("login_form"):
-            username = st.text_input("👤 Tên đăng nhập")
-            password = st.text_input("🔑 Mật khẩu", type="password")
-            if st.form_submit_button("🚀 ĐĂNG NHẬP", use_container_width=True):
+            username = st.text_input("👤 Quý Danh")
+            password = st.text_input("🔑 Khẩu quyết", type="password")
+            if st.form_submit_button("🚀 Lụm", use_container_width=True):
                 if username in USERS and USERS[username] == password:
                     st.session_state.logged_in = True
                     st.session_state.user = username
                     st.rerun()
                 else: 
-                    st.error("❌ Sai tài khoản hoặc mật khẩu!")
+                    st.error("❌ Gặp Đức xin bí quyết nhé")
     st.stop()
 
 # --- SIDEBAR ---
@@ -169,14 +169,14 @@ st.sidebar.markdown(f"### 👋 Xin chào, **{current_user.upper()}**!")
 st.sidebar.markdown("---")
 
 if current_user == "ducadmin":
-    menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD", "📊 4. Lọc File (Google Sheet)"]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD"]
 else:
     menu_options = ["🏠 1. Trang chủ", "📸 2. Lấy Thumb DMX", "📸 3. Lấy Thumb TGDD"]
 
 menu = st.sidebar.radio("📌 TÍNH NĂNG CHÍNH", menu_options)
 
 st.sidebar.markdown("---")
-if st.sidebar.button("🚪 Đăng xuất", use_container_width=True):
+if st.sidebar.button("🚪 Out sever", use_container_width=True):
     st.session_state.logged_in = False
     st.session_state.user = ""
     st.session_state.thumb_results = []
@@ -198,15 +198,15 @@ elif st.session_state.current_menu != menu:
 # ==========================================
 
 if "1. Trang chủ" in menu:
-    st.title("🌟 TỔNG QUAN HỆ THỐNG")
-    st.success("✅ Đã xử lý triệt để lỗi đăng nhập (KeyError) và lỗi đọc file JSON. Hệ thống hoạt động 100% ổn định.")
-    st.info("Mẹo: Để trình duyệt hỏi vị trí lưu file ZIP, hãy vào Cài đặt Chrome -> Tệp đã tải xuống -> Bật 'Hỏi vị trí lưu từng tệp trước khi tải xuống'.")
+    st.title("🌟 TỔNG QUAN MÔN PHÁI")
+    st.success("✅ How are you")
+    st.info("Chưa tài đâu")
 
 elif "Lấy Thumb" in menu:
     domain = "dienmayxanh.com" if "DMX" in menu else "thegioididong.com"
     logo_color = "#0088FF" if "DMX" in menu else "#FFCA28"
     
-    st.markdown(f"<h2 style='color: {logo_color};'>📸 Tool Quét & Ốp Khung Thumbnail ({domain.upper()})</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color: {logo_color};'>📸 Bí kíp luyện công ({domain.upper()})</h2>", unsafe_allow_html=True)
     
     uploaded_logo = st.file_uploader("📂 BƯỚC 1: Tải lên Khung/Logo PNG (Nền trong suốt, cùng Tỷ lệ 1:1)", type=['png'])
     if uploaded_logo:
