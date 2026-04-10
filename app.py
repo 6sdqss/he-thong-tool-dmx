@@ -180,7 +180,7 @@ if not st.session_state.get("logged_in", False):
         st.markdown("<h2 style='text-align: center; color: #1A237E;'>BÍ KÍP VÕ CÔNG</h2>", unsafe_allow_html=True)
         
         # TAB ĐĂNG NHẬP & ĐĂNG KÝ
-        tab_login, tab_register = st.tabs(["🔐 Đăng Nhập", "📝 Ghi Danh (Đăng Ký)"])
+        tab_login, tab_register = st.tabs(["🔐 Cổng Vào", "📝 Ghi Danh"])
         
         with tab_login:
             st.markdown("<p style='text-align: center; color: gray;'>Vui lòng đăng nhập để tiếp tục</p>", unsafe_allow_html=True)
