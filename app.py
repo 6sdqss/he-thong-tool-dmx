@@ -198,12 +198,12 @@ if not st.session_state.get("logged_in", False):
                         st.error("❌ Khẩu quyết xài không được! Hỏi lại Đức nhé.")
                         
         with tab_register:
-            st.markdown("<p style='text-align: center; color: gray;'>Tạo tài khoản mới cho đồng đạo</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center; color: gray;'>Ghi danh để chở thành đồng đạo</p>", unsafe_allow_html=True)
             with st.form("register_form"):
-                new_user = st.text_input("👤 Nhập Quý Danh (Tên đăng nhập mới)")
-                new_pass = st.text_input("🔑 Nhập Khẩu quyết (Mật khẩu mới)", type="password")
+                new_user = st.text_input("👤 Nhập Quý Danh")
+                new_pass = st.text_input("🔑 Nhập Khẩu quyết", type="password")
                 new_pass2 = st.text_input("🔑 Xác nhận Khẩu quyết", type="password")
-                if st.form_submit_button("📝 Đăng Ký", use_container_width=True):
+                if st.form_submit_button("📝 Ghi Danh", use_container_width=True):
                     u_new = new_user.strip()
                     p_new = new_pass.strip()
                     if not u_new or not p_new:
