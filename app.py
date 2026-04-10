@@ -23,21 +23,27 @@ HEADERS = {
 }
 
 # ==========================================
-# HỆ THỐNG QUẢN LÝ TÀI KHOẢN (LƯU VĨNH VIỄN)
+# HỆ THỐNG QUẢN LÝ TÀI KHOẢN (CHỐNG LỖI CACHE)
 # ==========================================
 USER_FILE = "users.json"
 
 def load_users():
+    # 2 Tài khoản gốc không bao giờ bị xóa
+    base_users = {"ducpro": "234766", "tuanpro": "174900"}
+    
     if os.path.exists(USER_FILE):
         try:
             with open(USER_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                saved_users = json.load(f)
+                # Gộp tài khoản gốc vào danh sách đã lưu (đảm bảo không bị mất tuanpro)
+                for k, v in base_users.items():
+                    saved_users[k] = v
+                return saved_users
         except Exception:
             pass
-    # Nếu file chưa tồn tại, tạo mặc định 2 tài khoản gốc
-    default_users = {"ducpro": "234766", "tuanpro": "174900"}
-    save_users(default_users)
-    return default_users
+            
+    save_users(base_users)
+    return base_users
 
 def save_users(users_dict):
     try:
@@ -46,7 +52,7 @@ def save_users(users_dict):
     except Exception as e:
         st.error(f"Lỗi lưu tài khoản: {e}")
 
-# Nạp danh sách tài khoản vào hệ thống
+# Nạp danh sách tài khoản
 USERS = load_users()
 
 # ==========================================
@@ -173,7 +179,7 @@ if not st.session_state.get("logged_in", False):
     with col2:
         st.markdown("<h2 style='text-align: center; color: #1A237E;'>BÍ KÍP VÕ CÔNG</h2>", unsafe_allow_html=True)
         
-        # Tạo 2 Tab: Đăng nhập và Đăng ký
+        # TAB ĐĂNG NHẬP & ĐĂNG KÝ
         tab_login, tab_register = st.tabs(["🔐 Đăng Nhập", "📝 Ghi Danh (Đăng Ký)"])
         
         with tab_login:
@@ -194,8 +200,8 @@ if not st.session_state.get("logged_in", False):
         with tab_register:
             st.markdown("<p style='text-align: center; color: gray;'>Tạo tài khoản mới cho đồng đạo</p>", unsafe_allow_html=True)
             with st.form("register_form"):
-                new_user = st.text_input("👤 Nhập Quý Danh (Tên đăng nhập)")
-                new_pass = st.text_input("🔑 Nhập Khẩu quyết (Mật khẩu)", type="password")
+                new_user = st.text_input("👤 Nhập Quý Danh (Tên đăng nhập mới)")
+                new_pass = st.text_input("🔑 Nhập Khẩu quyết (Mật khẩu mới)", type="password")
                 new_pass2 = st.text_input("🔑 Xác nhận Khẩu quyết", type="password")
                 if st.form_submit_button("📝 Đăng Ký", use_container_width=True):
                     u_new = new_user.strip()
@@ -208,7 +214,7 @@ if not st.session_state.get("logged_in", False):
                         st.error("❌ Khẩu quyết xác nhận không khớp!")
                     else:
                         USERS[u_new] = p_new
-                        save_users(USERS) # Lưu vĩnh viễn vào file
+                        save_users(USERS)
                         st.success("✅ Ghi danh thành công! Vui lòng chuyển sang tab Đăng Nhập để vào.")
     st.stop()
 
