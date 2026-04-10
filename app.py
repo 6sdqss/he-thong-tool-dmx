@@ -17,7 +17,7 @@ from PIL import Image
 st.set_page_config(page_title="ĐỨC CONTENT 234766", page_icon="💎", layout="wide")
 
 # TÀI KHOẢN ĐĂNG NHẬP
-USERS = {"ducpro": "234766": "tuanpro": "174900"}
+USERS = {"ducpro": "234766", "tuanpro": "174900"}
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 HEADERS = {
