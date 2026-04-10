@@ -16,9 +16,6 @@ from PIL import Image
 # ==========================================
 st.set_page_config(page_title="ĐỨC CONTENT 234766", page_icon="💎", layout="wide")
 
-# TÀI KHOẢN ĐĂNG NHẬP
-USERS = {"ducpro": "234766", "tuanpro": "174900"}
-
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 HEADERS = {
     "User-Agent": USER_AGENT,
@@ -26,7 +23,34 @@ HEADERS = {
 }
 
 # ==========================================
-# KHỞI TẠO BIẾN AN TOÀN (CHỐNG LỖI KEYERROR 100%)
+# HỆ THỐNG QUẢN LÝ TÀI KHOẢN (LƯU VĨNH VIỄN)
+# ==========================================
+USER_FILE = "users.json"
+
+def load_users():
+    if os.path.exists(USER_FILE):
+        try:
+            with open(USER_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    # Nếu file chưa tồn tại, tạo mặc định 2 tài khoản gốc
+    default_users = {"ducpro": "234766", "tuanpro": "174900"}
+    save_users(default_users)
+    return default_users
+
+def save_users(users_dict):
+    try:
+        with open(USER_FILE, "w", encoding="utf-8") as f:
+            json.dump(users_dict, f, indent=4)
+    except Exception as e:
+        st.error(f"Lỗi lưu tài khoản: {e}")
+
+# Nạp danh sách tài khoản vào hệ thống
+USERS = load_users()
+
+# ==========================================
+# KHỞI TẠO BIẾN AN TOÀN
 # ==========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -47,18 +71,17 @@ def get_session():
     session.headers.update(HEADERS)
     
     all_cookies = {}
-    # Lọc lỗi JSON trống an toàn, không báo đỏ ra màn hình
     for file_name in ["cookies_dmx.json", "cookies_tgdd.json"]:
         if os.path.exists(file_name):
             try:
                 with open(file_name, "r", encoding="utf-8") as f:
                     content = f.read().strip()
-                    if content: # Nếu file không trống
+                    if content:
                         for c in json.loads(content):
                             if isinstance(c, dict) and c.get("name") and c.get("value"): 
                                 all_cookies[c.get("name")] = c.get("value")
             except Exception:
-                pass # Bỏ qua nếu file lỗi định dạng, tool vẫn chạy
+                pass
             
     session.cookies = cookiejar_from_dict(all_cookies)
     return session
@@ -84,7 +107,6 @@ def extract_simage_thumb(simage_str):
 def clean_image_url(url, domain):
     if not url: return url
     
-    # BỘ LỌC REGEX GIỮ LẠI -600x600 CHUẨN XÁC
     def check_size(match):
         w, h = int(match.group(1)), int(match.group(2))
         if (w < 600 and h < 600) or (w == 750 and h == 500):
@@ -143,24 +165,51 @@ def fetch_by_api(session, product_id, domain):
     except Exception as e: return None, None, f"API_error: {e}"
 
 # ==========================================
-# KHU VỰC 3: HỆ THỐNG ĐĂNG NHẬP & PHÂN QUYỀN
+# KHU VỰC 3: HỆ THỐNG ĐĂNG NHẬP & TẠO TÀI KHOẢN
 # ==========================================
 if not st.session_state.get("logged_in", False):
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<h2 style='text-align: center; color: #1A237E;'>BÍ KÍP VÕ CÔNG</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: gray;'>Vui lòng đăng nhập để tiếp tục</p>", unsafe_allow_html=True)
-        with st.form("login_form"):
-            username = st.text_input("👤 Quý Danh")
-            password = st.text_input("🔑 Khẩu quyết", type="password")
-            if st.form_submit_button("🚀 Lụm", use_container_width=True):
-                if username in USERS and USERS[username] == password:
-                    st.session_state.logged_in = True
-                    st.session_state.user = username
-                    st.rerun()
-                else: 
-                    st.error("❌ Gặp Đức xin bí quyết nhé")
+        
+        # Tạo 2 Tab: Đăng nhập và Đăng ký
+        tab_login, tab_register = st.tabs(["🔐 Đăng Nhập", "📝 Ghi Danh (Đăng Ký)"])
+        
+        with tab_login:
+            st.markdown("<p style='text-align: center; color: gray;'>Vui lòng đăng nhập để tiếp tục</p>", unsafe_allow_html=True)
+            with st.form("login_form"):
+                username = st.text_input("👤 Quý Danh")
+                password = st.text_input("🔑 Khẩu quyết", type="password")
+                if st.form_submit_button("🚀 Lụm", use_container_width=True):
+                    u_clean = username.strip()
+                    p_clean = password.strip()
+                    if u_clean in USERS and USERS[u_clean] == p_clean:
+                        st.session_state.logged_in = True
+                        st.session_state.user = u_clean
+                        st.rerun()
+                    else: 
+                        st.error("❌ Khẩu quyết xài không được! Hỏi lại Đức nhé.")
+                        
+        with tab_register:
+            st.markdown("<p style='text-align: center; color: gray;'>Tạo tài khoản mới cho đồng đạo</p>", unsafe_allow_html=True)
+            with st.form("register_form"):
+                new_user = st.text_input("👤 Nhập Quý Danh (Tên đăng nhập)")
+                new_pass = st.text_input("🔑 Nhập Khẩu quyết (Mật khẩu)", type="password")
+                new_pass2 = st.text_input("🔑 Xác nhận Khẩu quyết", type="password")
+                if st.form_submit_button("📝 Đăng Ký", use_container_width=True):
+                    u_new = new_user.strip()
+                    p_new = new_pass.strip()
+                    if not u_new or not p_new:
+                        st.warning("⚠️ Vui lòng nhập đầy đủ thông tin!")
+                    elif u_new in USERS:
+                        st.error("❌ Tên này đã có cao nhân sử dụng, vui lòng chọn tên khác!")
+                    elif p_new != new_pass2.strip():
+                        st.error("❌ Khẩu quyết xác nhận không khớp!")
+                    else:
+                        USERS[u_new] = p_new
+                        save_users(USERS) # Lưu vĩnh viễn vào file
+                        st.success("✅ Ghi danh thành công! Vui lòng chuyển sang tab Đăng Nhập để vào.")
     st.stop()
 
 # --- SIDEBAR ---
@@ -169,7 +218,7 @@ st.sidebar.markdown(f"### 👋 Ní Hảo, **{current_user.upper()}**!")
 st.sidebar.markdown("---")
 
 if current_user == "ducpro":
-    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
+    menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD", "📊 4. Lọc File"]
 else:
     menu_options = ["🏠 1. Trang chủ", "📸 2. Môn Phái DMX", "📸 3. Môn Phái TGDD"]
 
@@ -202,7 +251,6 @@ if "1. Trang chủ" in menu:
     st.success("✅ Chẳng có gì để tổng quan")
     st.info("Lo làm đi")
 
-# ĐÃ SỬA LỖI TẠI ĐÂY: Bắt đúng chữ "Môn Phái"
 elif "Môn Phái" in menu:
     domain = "dienmayxanh.com" if "DMX" in menu else "thegioididong.com"
     logo_color = "#0088FF" if "DMX" in menu else "#FFCA28"
@@ -276,8 +324,8 @@ elif "Môn Phái" in menu:
                                     success_count += 1
                                 else:
                                     dl_status = f" [Lỗi tải HTTP {img_resp.status_code}]"
-                            except Exception as e:
-                                dl_status = f" [Lỗi tải ảnh]"
+                            except Exception:
+                                dl_status = " [Lỗi tải ảnh]"
 
                         out_status = ("OK" if thumb_clean else "Không có ảnh") + dl_status
                         
@@ -323,7 +371,6 @@ elif "Môn Phái" in menu:
                     copy_string += f"{r['ID']}\t{r['Link SP']}\t{r['Link Ảnh']}\t{r['Trạng Thái']}\n"
                 st.code(copy_string, language="text")
 
-# ĐÃ SỬA LỖI TẠI ĐÂY: Khớp tên cho mục Lọc File
 elif "4. Lọc File" in menu:
     st.title("📊 Quản Lý & Lọc File (Google Sheet)")
     st.markdown("Kết nối trực tiếp với Sheet hệ thống. Dễ dàng tìm kiếm và xem tiến độ.")
