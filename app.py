@@ -29,7 +29,7 @@ USER_FILE = "users.json"
 
 def load_users():
     # 2 Tài khoản gốc không bao giờ bị xóa
-    base_users = {"ducpro": "234766", "tuanpro": "174900"}
+    base_users = {"ducpro": "234766", "tuanpro": "174900", "guest": "234766"}
     
     if os.path.exists(USER_FILE):
         try:
