@@ -1032,7 +1032,10 @@ elif "Link Trực Tiếp" in menu:
                         for i, url in enumerate(links):
                             fm = re.search(r'/([^/]+\.(?:jpg|jpeg|png|webp))', url, re.IGNORECASE)
                             file_name = fm.group(1) if fm else f"image_{i+1}.jpg"
-                            pid = file_name.split(".")[0][:20]
+                            
+                            # Trích xuất ID từ link (thư mục số nằm ngay trước tên file)
+                            id_match = re.search(r'/(\d+)/[^/]+\.(?:jpg|jpeg|png|webp)', url, re.IGNORECASE)
+                            pid = id_match.group(1) if id_match else file_name.split(".")[0][:20]
 
                             progress_text.markdown(f"⏳ Đang tải: **{file_name}** ({i+1}/{len(links)})")
 
@@ -1043,7 +1046,7 @@ elif "Link Trực Tiếp" in menu:
                                     base_img = Image.open(io.BytesIO(resp.content))
                                     processed = process_image(base_img, logo_img, watermark_text, brightness, sharpen)
                                     img_bytes = img_to_bytes(processed, img_quality)
-                                    out_name = f"{i+1:04d}_{file_name.rsplit('.', 1)[0]}.jpg"
+                                    out_name = f"{pid}.jpg"
                                     zf.writestr(out_name, img_bytes)
                                     success_count += 1
                                     dl_status = "✅ Thành công"
