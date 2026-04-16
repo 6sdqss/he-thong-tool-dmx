@@ -860,13 +860,21 @@ elif "Thu Ảnh —" in menu and "Link" not in menu:
                 metric_pct = status_cols[2].empty()
                 
                 session = get_session()
+                start_time = time.time()  # Thêm biến bắt đầu đếm giờ
 
                 with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
                     for i, pid in enumerate(ids):
                         m = re.search(r'(\d+)(?!.*\d)', pid)
                         pid_num = m.group(1) if m else pid
 
-                        progress_text.markdown(f"⏳ Đang xử lý: **{pid_num}** &nbsp;({i+1}/{len(ids)})")
+                        # TÍNH TOÁN THỜI GIAN DỰ KIẾN
+                        elapsed_time = time.time() - start_time
+                        avg_time_per_image = elapsed_time / (i + 1)
+                        remaining_time = avg_time_per_image * (len(ids) - (i + 1))
+                        m_rem, s_rem = divmod(int(remaining_time), 60)
+                        time_str = f"{m_rem} phút {s_rem} giây" if m_rem > 0 else f"{s_rem} giây"
+
+                        progress_text.markdown(f"⏳ Đang xử lý: **{pid_num}** &nbsp;({i+1}/{len(ids)}) | ⏱️ Dự kiến hoàn thành trong: **{time_str}**")
 
                         final_url, thumb, _ = fetch_by_page(session, pid_num, domain)
                         if not (thumb and _.startswith("OK(Page-og")):
@@ -888,10 +896,9 @@ elif "Thu Ảnh —" in menu and "Link" not in menu:
                                     success_count += 1
                                     dl_status = "✅ Thành công"
 
-                                    # Lưu preview (tối đa 12 ảnh)
-                                    if len(preview_images) < 12:
-                                        b64 = base64.b64encode(img_bytes).decode()
-                                        preview_images.append((pid_num, b64))
+                                    # Lưu preview TOÀN BỘ ẢNH (Bỏ giới hạn 12 ảnh)
+                                    b64 = base64.b64encode(img_bytes).decode()
+                                    preview_images.append((pid_num, b64))
                                 else:
                                     fail_count += 1
                                     dl_status = f"❌ HTTP {img_resp.status_code}"
@@ -916,6 +923,9 @@ elif "Thu Ảnh —" in menu and "Link" not in menu:
                         time.sleep(0.1)
 
                 progress_text.success(f"🎉 Hoàn thành! {success_count}/{len(ids)} ảnh xử lý thành công.")
+                st.toast("🎉 Đã hoàn thành tải và xử lý ảnh! Bạn có thể kiểm tra ngay.", icon="✅") # THÔNG BÁO POPUP
+                st.balloons() # HIỆU ỨNG THÔNG BÁO HOÀN THÀNH
+                
                 st.session_state.thumb_results = temp_results
                 st.session_state.thumb_zip = zip_buffer.getvalue()
                 st.session_state.success_count = success_count
@@ -935,13 +945,14 @@ elif "Thu Ảnh —" in menu and "Link" not in menu:
             else:
                 st.error("❌ Không có ảnh nào tải thành công. Kiểm tra lại ID hoặc Cookie!")
 
-            # Preview grid
+            # Preview grid (CÓ THANH CUỘN CHO TẤT CẢ ẢNH)
             if st.session_state.preview_images:
-                st.markdown("**🖼️ Preview ảnh đã xử lý:**")
-                cols = st.columns(4)
-                for idx, (pid, b64) in enumerate(st.session_state.preview_images):
-                    with cols[idx % 4]:
-                        st.image(f"data:image/jpeg;base64,{b64}", caption=pid, use_container_width=True)
+                st.markdown(f"**🖼️ Preview ảnh đã xử lý ({len(st.session_state.preview_images)} ảnh) - Kéo thanh cuộn để xem:**")
+                with st.container(height=500): # TẠO VÙNG CHỨA CÓ THANH CUỘN
+                    cols = st.columns(4)
+                    for idx, (pid, b64) in enumerate(st.session_state.preview_images):
+                        with cols[idx % 4]:
+                            st.image(f"data:image/jpeg;base64,{b64}", caption=pid, use_container_width=True)
 
             # Table
             tab_table, tab_copy = st.tabs(["📋 Bảng kết quả", "📝 Copy dữ liệu"])
@@ -1028,6 +1039,8 @@ elif "Link Trực Tiếp" in menu:
                     m_pct = mc[2].empty()
 
                     session = get_session()
+                    start_time = time.time() # Thêm biến bắt đầu đếm giờ
+
                     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
                         for i, url in enumerate(links):
                             fm = re.search(r'/([^/]+\.(?:jpg|jpeg|png|webp))', url, re.IGNORECASE)
@@ -1037,7 +1050,14 @@ elif "Link Trực Tiếp" in menu:
                             id_match = re.search(r'/(\d+)/[^/]+\.(?:jpg|jpeg|png|webp)', url, re.IGNORECASE)
                             pid = id_match.group(1) if id_match else file_name.split(".")[0][:20]
 
-                            progress_text.markdown(f"⏳ Đang tải: **{file_name}** ({i+1}/{len(links)})")
+                            # TÍNH TOÁN THỜI GIAN DỰ KIẾN
+                            elapsed_time = time.time() - start_time
+                            avg_time_per_image = elapsed_time / (i + 1)
+                            remaining_time = avg_time_per_image * (len(links) - (i + 1))
+                            m_rem, s_rem = divmod(int(remaining_time), 60)
+                            time_str = f"{m_rem} phút {s_rem} giây" if m_rem > 0 else f"{s_rem} giây"
+
+                            progress_text.markdown(f"⏳ Đang tải: **{file_name}** ({i+1}/{len(links)}) | ⏱️ Dự kiến hoàn thành trong: **{time_str}**")
 
                             dl_status = "Không có ảnh"
                             try:
@@ -1050,9 +1070,10 @@ elif "Link Trực Tiếp" in menu:
                                     zf.writestr(out_name, img_bytes)
                                     success_count += 1
                                     dl_status = "✅ Thành công"
-                                    if len(preview_images) < 12:
-                                        b64 = base64.b64encode(img_bytes).decode()
-                                        preview_images.append((pid, b64))
+                                    
+                                    # Lưu preview TOÀN BỘ ẢNH (Bỏ giới hạn)
+                                    b64 = base64.b64encode(img_bytes).decode()
+                                    preview_images.append((pid, b64))
                                 else:
                                     fail_count += 1
                                     dl_status = f"❌ HTTP {resp.status_code}"
@@ -1072,6 +1093,9 @@ elif "Link Trực Tiếp" in menu:
                             time.sleep(0.08)
 
                     progress_text.success(f"🎉 Xong! {success_count}/{len(links)} ảnh thành công.")
+                    st.toast("🎉 Đã hoàn thành tải và xử lý Link Trực Tiếp! Bạn có thể kiểm tra ngay.", icon="✅") # THÔNG BÁO POPUP
+                    st.balloons() # HIỆU ỨNG THÔNG BÁO HOÀN THÀNH
+
                     st.session_state.thumb_results = temp_results
                     st.session_state.thumb_zip = zip_buffer.getvalue()
                     st.session_state.success_count = success_count
@@ -1090,12 +1114,14 @@ elif "Link Trực Tiếp" in menu:
             else:
                 st.error("❌ Không tải được ảnh nào. Kiểm tra lại link!")
 
+            # Preview grid (CÓ THANH CUỘN CHO TẤT CẢ ẢNH)
             if st.session_state.preview_images:
-                st.markdown("**🖼️ Preview:**")
-                cols = st.columns(4)
-                for idx, (pid, b64) in enumerate(st.session_state.preview_images):
-                    with cols[idx % 4]:
-                        st.image(f"data:image/jpeg;base64,{b64}", caption=pid, use_container_width=True)
+                st.markdown(f"**🖼️ Preview ảnh ({len(st.session_state.preview_images)} ảnh) - Kéo thanh cuộn để xem:**")
+                with st.container(height=500): # TẠO VÙNG CHỨA CÓ THANH CUỘN
+                    cols = st.columns(4)
+                    for idx, (pid, b64) in enumerate(st.session_state.preview_images):
+                        with cols[idx % 4]:
+                            st.image(f"data:image/jpeg;base64,{b64}", caption=pid, use_container_width=True)
 
             tab1, tab2 = st.tabs(["📋 Bảng kết quả", "📝 Copy"])
             with tab1:
