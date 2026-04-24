@@ -31,6 +31,12 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
+/* ===== ẨN THANH MENU VÀ HEADER MẶC ĐỊNH ===== */
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+[data-testid="stHeader"] {visibility: hidden;}
+[data-testid="stToolbar"] {visibility: hidden;}
+
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
 
 /* ===== RESET & BASE ===== */
